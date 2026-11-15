@@ -186,12 +186,11 @@ internal sealed class SmokeTest(ShellHost host, StartupOptions options, Action<i
             ?? plugins.Widgets.FirstOrDefault(w => w.IsVisible && w.Output.Panel is not null);
         if (showcase is not null && FindWidgetElement(showcase) is { } element)
         {
-            LinearBar.Plugins.PluginPanelPopup.Show(showcase, element);
+            var popup = LinearBar.Plugins.PluginPanelPopup.Show(showcase, element);
             await Task.Delay(600);
             SaveScreenshots("panel", extraHeight: 420);
             Check("plugin panel opens", true, showcase.Id);
-            Native.SetCursorPos(0, 0);
-            host.Window.Activate();
+            popup.Close();
             await Task.Delay(300);
         }
     }

@@ -127,6 +127,7 @@ public static class PluginOutputParser
         ReadCommentHandling = JsonCommentHandling.Skip,
         AllowTrailingCommas = true,
         NumberHandling = JsonNumberHandling.AllowReadingFromString,
+        Converters = { new LenientListConverterFactory() },
     };
 
     /// <summary>
@@ -215,4 +216,83 @@ public static class PluginOutputParser
     }
 
     private static double Clamp01(double value) => double.IsFinite(value) ? Math.Clamp(value, 0, 1) : 0;
+}
+
+/// <summary>
+/// Reads <see cref="IReadOnlyList{T}"/> properties leniently, because scripting languages
+/// rarely print lists the way a strict schema expects: Windows PowerShell 5.1 turns some
+/// arrays into <c>{"value": [...], "Count": n}</c> and single-element arrays into the bare
+/// element. All of those are accepted.
+/// </summary>
+internal sealed class LenientListConverterFactory : JsonConverterFactory
+{
+    public override bool CanConvert(Type typeToConvert) =>
+        typeToConvert.IsGenericType && typeToConvert.GetGenericTypeDefinition() == typeof(IReadOnlyList<>);
+
+    public override JsonConverter CreateConverter(Type typeToConvert, JsonSerializerOptions options) =>
+        (JsonConverter)Activator.CreateInstance(typeof(LenientListConverter<>).MakeGenericType(typeToConvert.GetGenericArguments()[0]))!;
+
+    private sealed class LenientListConverter<T> : JsonConverter<IReadOnlyList<T>>
+    {
+        public override IReadOnlyList<T>? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+        {
+            using JsonDocument document = JsonDocument.ParseValue(ref reader);
+            return ReadElement(document.RootElement, options);
+        }
+
+        public override void Write(Utf8JsonWriter writer, IReadOnlyList<T> value, JsonSerializerOptions options)
+        {
+            writer.WriteStartArray();
+            foreach (T item in value)
+            {
+                JsonSerializer.Serialize(writer, item, options);
+            }
+
+            writer.WriteEndArray();
+        }
+
+        private static List<T> ReadElement(JsonElement element, JsonSerializerOptions options)
+        {
+            switch (element.ValueKind)
+            {
+                case JsonValueKind.Null or JsonValueKind.Undefined:
+                    return [];
+
+                case JsonValueKind.Array:
+                    var list = new List<T>(element.GetArrayLength());
+                    foreach (JsonElement item in element.EnumerateArray())
+                    {
+                        T? value = item.Deserialize<T>(options);
+                        if (value is not null)
+                        {
+                            list.Add(value);
+                        }
+                    }
+
+                    return list;
+
+                case JsonValueKind.Object when TryGetValueProperty(element, out JsonElement wrapped):
+                    return ReadElement(wrapped, options);
+
+                default:
+                    T? single = element.Deserialize<T>(options);
+                    return single is null ? [] : [single];
+            }
+        }
+
+        private static bool TryGetValueProperty(JsonElement element, out JsonElement wrapped)
+        {
+            foreach (JsonProperty property in element.EnumerateObject())
+            {
+                if (string.Equals(property.Name, "value", StringComparison.OrdinalIgnoreCase) && property.Value.ValueKind == JsonValueKind.Array)
+                {
+                    wrapped = property.Value;
+                    return true;
+                }
+            }
+
+            wrapped = default;
+            return false;
+        }
+    }
 }

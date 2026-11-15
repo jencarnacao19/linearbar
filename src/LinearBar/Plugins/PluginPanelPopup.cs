@@ -50,11 +50,14 @@ internal sealed class PluginPanelPopup
     }
 
     /// <summary>Opens the panel of <paramref name="widget"/> above <paramref name="anchor"/>.</summary>
-    public static void Show(PluginWidgetViewModel widget, FrameworkElement anchor)
+    public static PluginPanelPopup Show(PluginWidgetViewModel widget, FrameworkElement anchor)
     {
         var panel = new PluginPanelPopup(widget, anchor);
         panel._popup.IsOpen = true;
+        return panel;
     }
+
+    public void Close() => _popup.IsOpen = false;
 
     /// <summary>The right-click menu of a widget: the plugin's own entries plus refresh.</summary>
     public static ContextMenu BuildMenu(PluginWidgetViewModel widget)

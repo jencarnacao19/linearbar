@@ -46,6 +46,24 @@ public class PluginOutputParserTests
     }
 
     [Fact]
+    public void PowerShell_51_list_quirks_are_accepted()
+    {
+        PluginOutput output = PluginOutputParser.Parse("""
+            { "text": "23 ms",
+              "graph": { "value": [10, 12, 30], "Count": 3 },
+              "bars": { "label": "5 h", "value": 0.4 },
+              "menu": { "title": "Abrir", "open": "https://example.com" },
+              "panel": { "rows": { "value": [ { "title": "a" }, { "title": "b" } ], "Count": 2 } } }
+            """);
+
+        Assert.Null(output.Error);
+        Assert.Equal([10.0, 12.0, 30.0], output.Graph);
+        Assert.Equal(0.4, Assert.Single(output.Bars).Value);
+        Assert.Equal("Abrir", Assert.Single(output.Menu).Title);
+        Assert.Equal(["a", "b"], output.Panel!.Rows.Select(r => r.Title));
+    }
+
+    [Fact]
     public void Broken_json_is_reported_as_an_error()
     {
         PluginOutput output = PluginOutputParser.Parse("{ \"text\": ");
