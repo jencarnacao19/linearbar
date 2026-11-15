@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <RootNamespace>LinearBar</RootNamespace>
+    <AssemblyName>LinearBar</AssemblyName>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <!-- Only ship the neutral resources of dependencies. -->
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!--
+      ManagedShell (Apache-2.0, the engine behind RetroBar) provides the hard Win32 parts:
+      AppBar registration, the task list (shell hook), notification-area icons and hiding
+      the Explorer taskbar.
+    -->
+    <PackageReference Include="ManagedShell" Version="0.0.374" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\LinearBar.Core\LinearBar.Core.csproj" />
+  </ItemGroup>
+
+</Project>

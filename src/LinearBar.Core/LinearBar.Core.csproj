@@ -1,0 +1,17 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Platform-independent logic: dock magnification math, layout geometry, metric
+    calculators, settings. No Windows or WPF dependencies, so it is unit-tested
+    on any OS (see tests/LinearBar.Core.Tests).
+  -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>LinearBar.Core</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="LinearBar.Core.Tests" />
+  </ItemGroup>
+
+</Project>
