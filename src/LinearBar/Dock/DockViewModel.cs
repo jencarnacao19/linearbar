@@ -29,6 +29,7 @@ internal sealed class DockViewModel : ObservableObject, IDisposable
     private bool _refreshQueued;
     private BarGeometry _geometry;
     private bool _showLabels;
+    private bool _iconTiles;
 
     public DockViewModel(ShellManager shell, SettingsStore store, AppIconLoader icons)
     {
@@ -74,12 +75,21 @@ internal sealed class DockViewModel : ObservableObject, IDisposable
 
     public bool ShowLabels => _showLabels;
 
+    public bool IconTiles => _iconTiles;
+
+    public double PlatterHeight => _geometry.IslandHeight;
+
+    public double PlatterBottom => BarGeometry.IslandMargin;
+
+    public double PlatterRadius => _geometry.IslandRadius;
+
     /// <summary>Re-reads the settings (sizes, pins) and rebuilds the dock.</summary>
     public void ApplySettings()
     {
         BarSettings settings = _store.Current;
         _geometry = BarGeometry.From(settings);
         _showLabels = settings.Dock.ShowLabels;
+        _iconTiles = settings.Dock.IconTiles;
 
         OnPropertyChanged(nameof(IconSize));
         OnPropertyChanged(nameof(SlotWidth));
@@ -88,6 +98,10 @@ internal sealed class DockViewModel : ObservableObject, IDisposable
         OnPropertyChanged(nameof(MaxScale));
         OnPropertyChanged(nameof(LensRadius));
         OnPropertyChanged(nameof(ShowLabels));
+        OnPropertyChanged(nameof(IconTiles));
+        OnPropertyChanged(nameof(PlatterHeight));
+        OnPropertyChanged(nameof(PlatterBottom));
+        OnPropertyChanged(nameof(PlatterRadius));
 
         if (_taskWindows is not null)
         {

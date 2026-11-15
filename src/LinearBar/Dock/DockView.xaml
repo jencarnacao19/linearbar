@@ -4,6 +4,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:local="clr-namespace:LinearBar.Dock"
              xmlns:infra="clr-namespace:LinearBar.Infrastructure"
+             xmlns:visuals="clr-namespace:LinearBar.Visuals"
              Focusable="False">
 
     <UserControl.Resources>
@@ -24,7 +25,10 @@
                                         CellHeight="{Binding CellHeight}"
                                         BottomMargin="{Binding CellBottomMargin}"
                                         MaxScale="{Binding MaxScale}"
-                                        LensRadius="{Binding LensRadius}" />
+                                        LensRadius="{Binding LensRadius}"
+                                        PlatterHeight="{Binding PlatterHeight}"
+                                        PlatterBottom="{Binding PlatterBottom}"
+                                        PlatterRadius="{Binding PlatterRadius}" />
                 </ItemsPanelTemplate>
             </ItemsControl.ItemsPanel>
 
@@ -44,23 +48,14 @@
                         </Button.ContextMenu>
 
                         <Grid>
-                            <Border x:Name="Placeholder"
-                                    Width="{Binding DataContext.IconSize, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
-                                    Height="{Binding DataContext.IconSize, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
-                                    HorizontalAlignment="Center"
-                                    VerticalAlignment="Top"
-                                    Background="#2EFFFFFF"
-                                    CornerRadius="9"
-                                    Visibility="Collapsed" />
-
-                            <Image x:Name="Icon"
-                                   Source="{Binding Icon}"
-                                   Width="{Binding DataContext.IconSize, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
-                                   Height="{Binding DataContext.IconSize, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
-                                   HorizontalAlignment="Center"
-                                   VerticalAlignment="Top"
-                                   Stretch="Uniform"
-                                   RenderOptions.BitmapScalingMode="HighQuality" />
+                            <visuals:IconTile x:Name="Icon"
+                                              Icon="{Binding Icon}"
+                                              Tint="{Binding TileTint}"
+                                              ShowTile="{Binding DataContext.IconTiles, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                              Width="{Binding DataContext.IconSize, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                              Height="{Binding DataContext.IconSize, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                              HorizontalAlignment="Center"
+                                              VerticalAlignment="Top" />
 
                             <ProgressBar Style="{StaticResource DockProgressBar}"
                                          Margin="5,0,5,9"
@@ -90,10 +85,6 @@
                     </Button>
 
                     <DataTemplate.Triggers>
-                        <DataTrigger Binding="{Binding Icon}" Value="{x:Null}">
-                            <Setter TargetName="Placeholder" Property="Visibility" Value="Visible" />
-                        </DataTrigger>
-
                         <!-- The app in front gets a wider, accent-coloured indicator. -->
                         <DataTrigger Binding="{Binding IsActive}" Value="True">
                             <Setter TargetName="Dot1" Property="Width" Value="12" />
@@ -132,21 +123,18 @@
 
         <!-- App name above the hovered icon. A Canvas so the label can be placed freely. -->
         <Canvas IsHitTestVisible="False">
-            <Border x:Name="Label"
-                    Background="{StaticResource PopupBackgroundBrush}"
-                    BorderBrush="{StaticResource PopupBorderBrush}"
-                    BorderThickness="1"
-                    CornerRadius="6"
-                    Padding="9,3,9,4"
-                    Visibility="Collapsed">
-                <Border.RenderTransform>
+            <visuals:GlassPanel x:Name="Label"
+                                Padding="11,4,11,5"
+                                Radius="10"
+                                Visibility="Collapsed">
+                <visuals:GlassPanel.RenderTransform>
                     <TranslateTransform x:Name="LabelOffset" />
-                </Border.RenderTransform>
+                </visuals:GlassPanel.RenderTransform>
                 <TextBlock x:Name="LabelText"
                            FontFamily="{StaticResource UiFont}"
                            FontSize="12.5"
                            Foreground="{StaticResource TextBrush}" />
-            </Border>
+            </visuals:GlassPanel>
         </Canvas>
     </Grid>
 </UserControl>

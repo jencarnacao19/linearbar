@@ -25,7 +25,26 @@ public readonly record struct BarGeometry
     /// <summary>Room reserved above the tallest icon for its name label.</summary>
     public const double LabelSpace = 34;
 
-    /// <summary>Height of the visible bar strip; the screen space reserved.</summary>
+    /// <summary>Gap between the floating glass islands and the screen edges.</summary>
+    public const double IslandMargin = 5;
+
+    /// <summary>Minimum room between the top of a resting icon and the top of the dock platter.</summary>
+    public const double PlatterTopPadding = 5;
+
+    /// <summary>Distance from the bottom of the platter to the bottom of the dock cells.</summary>
+    public const double PlatterBottomPadding = 2;
+
+    /// <summary>Extra platter width beyond the outer slots, on each side.</summary>
+    public const double PlatterSidePadding = 6;
+
+    /// <summary>Corner radius of an app icon tile relative to its size (Apple's app icon ratio).</summary>
+    public const double TileRadiusRatio = 0.2237;
+
+    /// <summary>Largest icon that fits a bar of <paramref name="barHeight"/> with the platter padding.</summary>
+    public static double MaxIconSize(double barHeight) =>
+        barHeight - 2 * IslandMargin - PlatterTopPadding - PlatterBottomPadding - IndicatorSpace;
+
+    /// <summary>Height of the reserved bar area; the islands float inside it.</summary>
     public double BarHeight { get; init; }
 
     /// <summary>Resting icon size.</summary>
@@ -39,6 +58,12 @@ public readonly record struct BarGeometry
 
     /// <summary>Distance from the bottom of the bar to the bottom of a cell.</summary>
     public double CellBottomMargin { get; init; }
+
+    /// <summary>Height of the glass islands (dock platter, Start, widgets).</summary>
+    public double IslandHeight => BarHeight - 2 * IslandMargin;
+
+    /// <summary>Corner radius of the islands.</summary>
+    public double IslandRadius => Math.Round(IslandHeight * 0.36);
 
     /// <summary>Peak scale of the lens (1 when magnification is off).</summary>
     public double MaxScale { get; init; }
@@ -60,10 +85,10 @@ public readonly record struct BarGeometry
         DockSettings dock = settings.Dock;
 
         double barHeight = settings.BarHeight;
-        double iconSize = dock.IconSize;
+        double iconSize = Math.Min(dock.IconSize, Math.Max(16, MaxIconSize(barHeight)));
         double slotWidth = iconSize + dock.Spacing;
         double cellHeight = iconSize + IndicatorSpace;
-        double bottomMargin = Math.Max(0, Math.Floor((barHeight - cellHeight) / 2));
+        double bottomMargin = IslandMargin + PlatterBottomPadding;
         double maxScale = dock.Magnify ? Math.Max(1, dock.MaxScale) : 1;
 
         double tallestCell = cellHeight * maxScale + bottomMargin;

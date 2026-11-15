@@ -89,11 +89,11 @@ internal sealed class AppIconLoader
         }
 
         // GetImageFromHIcon destroys the icon handle and freezes the result.
-        ImageSource? image = hIcon != IntPtr.Zero && IconImageConverter.GetImageFromHIcon(hIcon, returnDefault: false) is BitmapSource bitmap
+        BitmapSource? image = hIcon != IntPtr.Zero && IconImageConverter.GetImageFromHIcon(hIcon, returnDefault: false) is BitmapSource bitmap
             ? TrimPadding(bitmap)
             : null;
 
-        return new AppIcon(image, DescribeFile(path));
+        return new AppIcon(image, DescribeFile(path), DominantColour(image));
     }
 
     /// <summary>Friendly name of a file: the product description of executables, else the file name.</summary>
@@ -133,7 +133,37 @@ internal sealed class AppIconLoader
             image.Freeze();
         }
 
-        return new AppIcon(image, string.IsNullOrWhiteSpace(app.DisplayName) ? null : app.DisplayName);
+        return new AppIcon(image, string.IsNullOrWhiteSpace(app.DisplayName) ? null : app.DisplayName, DominantColour(image as BitmapSource));
+    }
+
+    /// <summary>The icon's characteristic colour, used to tint its tile; null for grey icons.</summary>
+    internal static Color? DominantColour(BitmapSource? source)
+    {
+        if (source is null)
+        {
+            return null;
+        }
+
+        try
+        {
+            BitmapSource bgra = source.Format == PixelFormats.Bgra32 || source.Format == PixelFormats.Pbgra32
+                ? source
+                : new FormatConvertedBitmap(source, PixelFormats.Bgra32, null, 0);
+
+            int width = bgra.PixelWidth;
+            int height = bgra.PixelHeight;
+            int stride = width * 4;
+            var pixels = new byte[stride * height];
+            bgra.CopyPixels(pixels, stride, 0);
+
+            return IconPalette.Dominant(pixels, width, height, stride) is { } rgb
+                ? Color.FromRgb(rgb.R, rgb.G, rgb.B)
+                : null;
+        }
+        catch (Exception ex) when (ex is ArgumentException or InvalidOperationException or NotSupportedException or System.IO.IOException)
+        {
+            return null;
+        }
     }
 
     /// <summary>
@@ -174,4 +204,5 @@ internal sealed class AppIconLoader
 /// <summary>Result of an icon lookup.</summary>
 /// <param name="Image">The icon, or null when none could be loaded.</param>
 /// <param name="DisplayName">App name found along the way, or null.</param>
-internal sealed record AppIcon(ImageSource? Image, string? DisplayName);
+/// <param name="Tint">The icon's dominant colour, or null for colourless icons.</param>
+internal sealed record AppIcon(ImageSource? Image, string? DisplayName, Color? Tint);

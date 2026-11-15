@@ -4,6 +4,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using LinearBar.Core.Animation;
 using LinearBar.Core.Dock;
+using LinearBar.Visuals;
 
 namespace LinearBar.Dock;
 
@@ -45,6 +46,9 @@ internal sealed class MagnifyPanel : Panel
     public static readonly DependencyProperty BottomMarginProperty = Register(nameof(BottomMargin), 2.0);
     public static readonly DependencyProperty MaxScaleProperty = Register(nameof(MaxScale), 1.75);
     public static readonly DependencyProperty LensRadiusProperty = Register(nameof(LensRadius), 120.0);
+    public static readonly DependencyProperty PlatterHeightProperty = Register(nameof(PlatterHeight), 54.0);
+    public static readonly DependencyProperty PlatterBottomProperty = Register(nameof(PlatterBottom), 5.0);
+    public static readonly DependencyProperty PlatterRadiusProperty = Register(nameof(PlatterRadius), 19.0);
     public static readonly DependencyProperty LeftInsetProperty = Register(nameof(LeftInset), 0.0);
     public static readonly DependencyProperty RightInsetProperty = Register(nameof(RightInset), 0.0);
 
@@ -58,10 +62,13 @@ internal sealed class MagnifyPanel : Panel
     private double _origin;
     private DockHover _hover = new(-1, 0, 0);
     private DockHover _reportedHover = new(-1, 0, 0);
+    private Rect _platter = Rect.Empty;
 
     public MagnifyPanel()
     {
         Unloaded += (_, _) => StopTicking();
+        Unloaded += (_, _) => Glass.Changed -= InvalidateVisual;
+        Loaded += (_, _) => Glass.Changed += InvalidateVisual;
 
         // Listeners reposition other elements (the name label). Telling them from inside
         // ArrangeOverride would have them change layout in the middle of a layout pass, so
@@ -113,6 +120,32 @@ internal sealed class MagnifyPanel : Panel
         get => (double)GetValue(LensRadiusProperty);
         set => SetValue(LensRadiusProperty, value);
     }
+
+    /// <summary>Height of the glass platter the icons rest on.</summary>
+    public double PlatterHeight
+    {
+        get => (double)GetValue(PlatterHeightProperty);
+        set => SetValue(PlatterHeightProperty, value);
+    }
+
+    /// <summary>Distance from the bottom of the panel to the bottom of the platter.</summary>
+    public double PlatterBottom
+    {
+        get => (double)GetValue(PlatterBottomProperty);
+        set => SetValue(PlatterBottomProperty, value);
+    }
+
+    public double PlatterRadius
+    {
+        get => (double)GetValue(PlatterRadiusProperty);
+        set => SetValue(PlatterRadiusProperty, value);
+    }
+
+    /// <summary>Current platter bounds in panel coordinates (empty when the dock is empty).</summary>
+    public Rect PlatterBounds => _platter;
+
+    /// <summary>Raised when the platter moves or resizes (every frame while it animates).</summary>
+    public event Action<Rect>? PlatterChanged;
 
     /// <summary>Width at the left end of the panel the dock must keep clear (the Start button).</summary>
     public double LeftInset
@@ -226,20 +259,38 @@ internal sealed class MagnifyPanel : Panel
         int count = InternalChildren.Count;
         if (count == 0)
         {
+            SetPlatter(Rect.Empty);
             return;
         }
 
-        // The hit plate: see the class remarks. It follows the magnified extent of the dock
-        // and is as tall as the tallest cell can currently be.
+        // The platter follows the magnified extent of the dock, like the macOS dock.
         double slot = SlotWidth * _fit;
         double magnification = Math.Max(0, MaxScale - 1) * _amount.Value;
         var lens = new Lens(magnification, LensRadius * _fit);
         (double left, double right) = DockLayout.Extent(count, _origin, slot, _cursor, lens);
 
+        double pad = BarGeometry.PlatterSidePadding;
+        double platterTop = RenderSize.Height - PlatterBottom - PlatterHeight;
+        var platter = new Rect(Math.Round(left - pad), Math.Round(platterTop), Math.Round(right - left + 2 * pad), PlatterHeight);
+        Glass.DrawSurface(drawingContext, platter, PlatterRadius);
+        SetPlatter(platter);
+
+        // The hit plate above the platter: see the class remarks. As tall as the tallest
+        // cell can currently be.
         double height = Math.Min(RenderSize.Height, BottomMargin + CellHeight * _fit * (1 + magnification));
-        if (right > left && height > 0)
+        double above = RenderSize.Height - height;
+        if (right > left && above < platterTop)
         {
-            drawingContext.DrawRectangle(HitPlateBrush, null, new Rect(left, RenderSize.Height - height, right - left, height));
+            drawingContext.DrawRectangle(HitPlateBrush, null, new Rect(left, above, right - left, platterTop - above));
+        }
+    }
+
+    private void SetPlatter(Rect platter)
+    {
+        if (platter != _platter)
+        {
+            _platter = platter;
+            PlatterChanged?.Invoke(platter);
         }
     }
 

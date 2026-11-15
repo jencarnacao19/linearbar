@@ -1,8 +1,11 @@
 using System.Windows;
+using System.Windows.Media;
 using System.Windows.Input;
 using LinearBar.Core.Dock;
 using LinearBar.Dock;
 using LinearBar.Infrastructure;
+using LinearBar.Shell;
+using LinearBar.Visuals;
 using ManagedShell;
 using ManagedShell.AppBar;
 using ManagedShell.Common.Helpers;
@@ -42,6 +45,8 @@ internal partial class BarWindow : AppBarWindow
 
     private readonly ShellManager _shell;
     private readonly BarViewModel _viewModel;
+    private BackdropWindow? _backdrop;
+    private MagnifyPanel? _observedPanel;
     private double _overflowHeight;
     private Rect _reservedRect;
 
@@ -64,6 +69,24 @@ internal partial class BarWindow : AppBarWindow
 
         InitializeComponent();
         DataContext = viewModel;
+
+        LayoutUpdated += (_, _) => UpdateBackdrop();
+        DockHost.LabelChanged += UpdateBackdrop;
+    }
+
+    /// <summary>
+    /// The window that blurs what is behind the glass islands, or null for no blur.
+    /// Owned by the caller.
+    /// </summary>
+    public BackdropWindow? Backdrop
+    {
+        get => _backdrop;
+        set
+        {
+            _backdrop?.Hide();
+            _backdrop = value;
+            UpdateBackdrop();
+        }
     }
 
     /// <summary>The dock hosted in this window.</summary>
@@ -97,6 +120,7 @@ internal partial class BarWindow : AppBarWindow
         if (msg == WM_WINDOWPOSCHANGED)
         {
             ReportPlacement();
+            UpdateBackdrop();
         }
 
         return result;
@@ -158,6 +182,91 @@ internal partial class BarWindow : AppBarWindow
     private int ReservedPixels => Convert.ToInt32(DesiredHeight * DpiScale);
 
     private int OverflowPixels => (int)Math.Round(_overflowHeight * DpiScale);
+
+    protected override void OnFullScreenEnter(ManagedShell.AppBar.FullScreenApp app)
+    {
+        base.OnFullScreenEnter(app);
+        UpdateBackdrop();
+    }
+
+    protected override void OnFullScreenLeave()
+    {
+        base.OnFullScreenLeave();
+        UpdateBackdrop();
+    }
+
+    // ---- Backdrop blur ------------------------------------------------------------------
+
+    /// <summary>Keeps the blur window under the bar and cut to the current island shapes.</summary>
+    private void UpdateBackdrop()
+    {
+        if (_backdrop is null || Handle == IntPtr.Zero)
+        {
+            return;
+        }
+
+        // The dock panel only exists once the items control has been templated.
+        if (DockHost.Panel is { } panel && !ReferenceEquals(panel, _observedPanel))
+        {
+            if (_observedPanel is not null)
+            {
+                _observedPanel.PlatterChanged -= OnPlatterChanged;
+            }
+
+            _observedPanel = panel;
+            panel.PlatterChanged += OnPlatterChanged;
+        }
+
+        double dpi = DpiScale;
+        var shapes = new List<(System.Windows.Rect Bounds, double Radius)>(4);
+        double islandRadius = _viewModel.IslandRadius;
+
+        AddShape(shapes, BoundsOf(LeftGroup), islandRadius, dpi);
+        AddShape(shapes, BoundsOf(RightGroup), islandRadius, dpi);
+
+        if (_observedPanel is { } dock && !dock.PlatterBounds.IsEmpty)
+        {
+            AddShape(shapes, Transform(dock, dock.PlatterBounds), islandRadius, dpi);
+        }
+
+        if (DockHost.LabelBounds(this) is { } label)
+        {
+            AddShape(shapes, label, 10, dpi);
+        }
+
+        Rect window = WindowRect;
+        var barRect = new Int32Rect(window.Left, window.Top, window.Width, window.Height);
+        bool show = IsVisible && Topmost && !IsClosing;
+        _backdrop.Update(Handle, barRect, show, shapes, Glass.Smoothing);
+    }
+
+    private void OnPlatterChanged(System.Windows.Rect platter) => UpdateBackdrop();
+
+    private System.Windows.Rect? BoundsOf(FrameworkElement element) =>
+        element.IsVisible && element.ActualWidth > 0 ? Transform(element, new System.Windows.Rect(element.RenderSize)) : null;
+
+    private System.Windows.Rect? Transform(Visual element, System.Windows.Rect bounds)
+    {
+        try
+        {
+            return element.TransformToAncestor(this).TransformBounds(bounds);
+        }
+        catch (InvalidOperationException)
+        {
+            return null;
+        }
+    }
+
+    private static void AddShape(List<(System.Windows.Rect Bounds, double Radius)> shapes, System.Windows.Rect? bounds, double radius, double dpi)
+    {
+        if (bounds is not { IsEmpty: false } b || b.Width < 2 || b.Height < 2)
+        {
+            return;
+        }
+
+        var scaled = new System.Windows.Rect(Math.Round(b.X * dpi), Math.Round(b.Y * dpi), Math.Round(b.Width * dpi), Math.Round(b.Height * dpi));
+        shapes.Add((scaled, Math.Round(radius * dpi)));
+    }
 
     // ---- Layout -------------------------------------------------------------------------
 

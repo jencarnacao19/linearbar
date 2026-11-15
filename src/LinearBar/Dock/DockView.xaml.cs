@@ -1,6 +1,7 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Media;
 using LinearBar.Infrastructure;
 
 namespace LinearBar.Dock;
@@ -18,6 +19,27 @@ internal partial class DockView : UserControl
     public DockView()
     {
         InitializeComponent();
+    }
+
+    /// <summary>Raised after the name label appeared, moved or disappeared.</summary>
+    public event Action? LabelChanged;
+
+    /// <summary>The label's bounds in the coordinates of <paramref name="ancestor"/>, or null when hidden.</summary>
+    public Rect? LabelBounds(Visual ancestor)
+    {
+        if (Label.Visibility != Visibility.Visible || Label.ActualWidth <= 0)
+        {
+            return null;
+        }
+
+        try
+        {
+            return Label.TransformToAncestor(ancestor).TransformBounds(new Rect(Label.RenderSize));
+        }
+        catch (InvalidOperationException)
+        {
+            return null;
+        }
     }
 
     /// <summary>The panel doing the layout, once the items control has created it.</summary>
@@ -63,7 +85,12 @@ internal partial class DockView : UserControl
             || hover.Index >= dock.Items.Count
             || string.IsNullOrWhiteSpace(dock.Items[hover.Index].DisplayName))
         {
-            Label.Visibility = Visibility.Collapsed;
+            if (Label.Visibility != Visibility.Collapsed)
+            {
+                Label.Visibility = Visibility.Collapsed;
+                LabelChanged?.Invoke();
+            }
+
             return;
         }
 
@@ -80,6 +107,10 @@ internal partial class DockView : UserControl
 
         LabelOffset.X = Math.Round(x);
         LabelOffset.Y = Math.Round(y);
+
+        // The label is arranged with its new text on the next layout pass.
+        Label.UpdateLayout();
+        LabelChanged?.Invoke();
     }
 
     private void OnItemPressed(object sender, MouseButtonEventArgs e)

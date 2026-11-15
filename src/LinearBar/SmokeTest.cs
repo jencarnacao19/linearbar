@@ -73,6 +73,11 @@ internal sealed class SmokeTest(ShellHost host, StartupOptions options, Action<i
         Log.Info($"SMOKE: OS {Environment.OSVersion.VersionString}, 64-bit process {Environment.Is64BitProcess}, .NET {Environment.Version}");
         Log.Info($"SMOKE: screen {window.Screen.DeviceName} bounds {window.Screen.Bounds}, DPI scale {window.DpiScale:0.##}");
         Log.Info($"SMOKE: running as shell {ManagedShell.Common.Helpers.EnvironmentHelper.IsAppRunningAsShell}, Windows taskbar hidden {host.Taskbar.IsHidden}");
+        Log.Info($"SMOKE: glass blur {(host.Backdrop is null ? "off" : "on")}, icon tiles {host.Dock.IconTiles}");
+        if (host.ViewModel.Geometry.BarHeight > 0 && options.SettingsPath is not null)
+        {
+            Check("backdrop blur is active", host.Backdrop is { IsBlurEnabled: true }, host.Backdrop is null ? "no backdrop window" : "blur enabled");
+        }
     }
 
     private void CheckWindow()

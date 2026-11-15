@@ -66,8 +66,8 @@ public class BarSettingsTests
 
         settings.Normalize();
 
-        Assert.Equal(96, settings.BarHeight);
-        Assert.Equal(0.88, settings.BarOpacity);
+        Assert.Equal(110, settings.BarHeight);
+        Assert.Equal(0.5, settings.BarOpacity);
         Assert.NotNull(settings.Dock);
         Assert.Equal(250, settings.Metrics.IntervalMs);
         Assert.Equal(600, settings.Metrics.HistoryLength);
@@ -125,8 +125,8 @@ public sealed class SettingsStoreTests : IDisposable
 
         Assert.True(File.Exists(FilePath));
         Assert.Null(store.LastError);
-        Assert.Equal(52, settings.BarHeight);
-        Assert.Contains("\"barHeight\": 52", File.ReadAllText(FilePath));
+        Assert.Equal(64, settings.BarHeight);
+        Assert.Contains("\"barHeight\": 64", File.ReadAllText(FilePath));
     }
 
     [Fact]
@@ -173,7 +173,7 @@ public sealed class SettingsStoreTests : IDisposable
         Assert.Equal(1.75, settings.Dock.MaxScale);
         Assert.False(settings.Metrics.ShowNetwork);
         Assert.True(settings.Metrics.ShowCpu);
-        Assert.Equal(52, settings.BarHeight);
+        Assert.Equal(64, settings.BarHeight);
     }
 
     [Fact]

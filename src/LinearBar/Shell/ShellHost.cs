@@ -3,6 +3,7 @@ using LinearBar.Core.Config;
 using LinearBar.Dock;
 using LinearBar.Infrastructure;
 using LinearBar.Metrics;
+using LinearBar.Visuals;
 using LinearBar.Widgets;
 using ManagedShell;
 using ManagedShell.AppBar;
@@ -23,6 +24,7 @@ internal sealed class ShellHost : IDisposable
     private readonly Dispatcher _dispatcher;
     private readonly Log.ShellLogBridge _shellLog = new();
     private readonly bool _keepTaskbar;
+    private BackdropWindow? _backdrop;
     private bool _disposed;
 
     public ShellHost(SettingsStore store, StartupOptions options, Action exit)
@@ -55,7 +57,8 @@ internal sealed class ShellHost : IDisposable
         Clock = new ClockViewModel(settings.Clock);
         ViewModel = new BarViewModel(Shell, store, Dock, Metrics, Clock, exit);
 
-        Window = new BarWindow(Shell, AppBarScreen.FromPrimaryScreen(), ViewModel);
+        ApplyAppearance(settings);
+        Window = new BarWindow(Shell, AppBarScreen.FromPrimaryScreen(), ViewModel) { Backdrop = _backdrop };
         Window.Show();
 
         // Hide the Windows taskbar only once our own bar is up.
@@ -84,6 +87,9 @@ internal sealed class ShellHost : IDisposable
     public BarViewModel ViewModel { get; }
 
     public BarWindow Window { get; }
+
+    /// <summary>The blur behind the glass, or null when switched off or unsupported.</summary>
+    public BackdropWindow? Backdrop => _backdrop;
 
     /// <summary>
     /// Last-resort clean-up for a process that is about to die from an unhandled exception:
@@ -119,6 +125,7 @@ internal sealed class ShellHost : IDisposable
             Window.AllowClose = true;
             Window.Close();
         });
+        Step("remove the backdrop", () => _backdrop?.Dispose());
         Step("stop the metrics", Metrics.Dispose);
         Step("stop the clock", Clock.Dispose);
         Step("release the dock", Dock.Dispose);
@@ -137,6 +144,35 @@ internal sealed class ShellHost : IDisposable
         {
             Log.Error("Shutdown: could not " + what, ex);
         }
+    }
+
+    /// <summary>Creates or removes the backdrop blur and configures the glass to match.</summary>
+    private void ApplyAppearance(BarSettings settings)
+    {
+        if (settings.Appearance.Blur && _backdrop is null)
+        {
+            try
+            {
+                _backdrop = new BackdropWindow();
+                if (!_backdrop.IsBlurEnabled)
+                {
+                    _backdrop.Dispose();
+                    _backdrop = null;
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Warn("Could not create the backdrop blur: " + ex.Message);
+                _backdrop = null;
+            }
+        }
+        else if (!settings.Appearance.Blur && _backdrop is not null)
+        {
+            _backdrop.Dispose();
+            _backdrop = null;
+        }
+
+        Glass.Configure(_backdrop is not null, settings.BarOpacity, settings.Appearance.CornerSmoothing);
     }
 
     private void ImportTaskbarPinsOnFirstRun()
@@ -168,6 +204,8 @@ internal sealed class ShellHost : IDisposable
             Log.Info("Settings file changed; applying.");
             try
             {
+                ApplyAppearance(_store.Current);
+                Window.Backdrop = _backdrop;
                 ViewModel.ApplySettings();
                 Window.ApplyGeometry();
 

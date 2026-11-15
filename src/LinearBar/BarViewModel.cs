@@ -16,11 +16,8 @@ namespace LinearBar;
 /// <summary>Everything the bar window binds to.</summary>
 internal sealed class BarViewModel : ObservableObject
 {
-    private static readonly Color BarColor = Color.FromRgb(0x1C, 0x1C, 0x21);
-
     private readonly SettingsStore _store;
     private BarGeometry _geometry;
-    private Brush _barBackground = Brushes.Transparent;
     private bool _showTray;
     private bool _isTrayExpanded;
 
@@ -74,14 +71,16 @@ internal sealed class BarViewModel : ObservableObject
     /// <summary>Sizes derived from the settings.</summary>
     public BarGeometry Geometry => _geometry;
 
-    /// <summary>Height of the visible strip.</summary>
+    /// <summary>Height of the reserved strip the islands float in.</summary>
     public double BarHeight => _geometry.BarHeight;
 
-    public Brush BarBackground
-    {
-        get => _barBackground;
-        private set => Set(ref _barBackground, value);
-    }
+    /// <summary>Height of the glass islands.</summary>
+    public double IslandHeight => _geometry.IslandHeight;
+
+    public double IslandRadius => _geometry.IslandRadius;
+
+    /// <summary>The Start button is a square filling its island.</summary>
+    public double StartButtonSize => _geometry.IslandHeight - 6;
 
     public bool ShowTray
     {
@@ -114,10 +113,10 @@ internal sealed class BarViewModel : ObservableObject
         _geometry = BarGeometry.From(settings);
         OnPropertyChanged(nameof(Geometry));
         OnPropertyChanged(nameof(BarHeight));
+        OnPropertyChanged(nameof(IslandHeight));
+        OnPropertyChanged(nameof(IslandRadius));
+        OnPropertyChanged(nameof(StartButtonSize));
 
-        var background = new SolidColorBrush(BarColor) { Opacity = settings.BarOpacity };
-        background.Freeze();
-        BarBackground = background;
 
         ShowTray = settings.ShowTray && PinnedTrayIcons is not null;
     }

@@ -36,6 +36,7 @@ internal sealed class DockItemViewModel : ObservableObject, IDisposable
     private string? _identitySource;
     private ImageSource? _loadedIcon;
     private string? _loadedName;
+    private Color? _tileTint;
     private IntPtr _activeAtPress;
 
     private ImageSource? _icon;
@@ -68,6 +69,13 @@ internal sealed class DockItemViewModel : ObservableObject, IDisposable
     {
         get => _icon;
         private set => Set(ref _icon, value);
+    }
+
+    /// <summary>Colour the icon's glass tile is tinted with (its dominant colour).</summary>
+    public Color? TileTint
+    {
+        get => _tileTint;
+        private set => Set(ref _tileTint, value);
     }
 
     /// <summary>Application name shown in the label above the icon.</summary>
@@ -348,6 +356,7 @@ internal sealed class DockItemViewModel : ObservableObject, IDisposable
         _identitySource = source;
         _loadedIcon = null;
         _loadedName = null;
+        TileTint = null;
 
         load?.ContinueWith(
             task =>
@@ -360,6 +369,7 @@ internal sealed class DockItemViewModel : ObservableObject, IDisposable
 
                 _loadedIcon = result.Image;
                 _loadedName = result.DisplayName;
+                TileTint = result.Tint;
                 RefreshState();
             },
             CancellationToken.None,

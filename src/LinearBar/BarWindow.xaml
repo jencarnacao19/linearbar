@@ -6,6 +6,7 @@
                      xmlns:local="clr-namespace:LinearBar"
                      xmlns:dock="clr-namespace:LinearBar.Dock"
                      xmlns:widgets="clr-namespace:LinearBar.Widgets"
+                     xmlns:visuals="clr-namespace:LinearBar.Visuals"
                      Title="LinearBar"
                      AllowsTransparency="True"
                      Background="Transparent"
@@ -91,13 +92,15 @@
     </appbar:AppBarWindow.Resources>
 
     <Grid>
-        <!-- The visible bar strip: the only part of the window that reserves screen space. -->
+        <!--
+            The reserved strip. It is transparent apart from the floating glass islands, but
+            keeps an invisible (alpha 1) background so clicks between the islands still reach
+            the bar (for its context menu) instead of falling through to the desktop.
+        -->
         <Border x:Name="Strip"
                 Height="{Binding BarHeight}"
                 VerticalAlignment="Bottom"
-                Background="{Binding BarBackground}"
-                BorderBrush="{StaticResource BarBorderBrush}"
-                BorderThickness="0,1,0,0">
+                Background="#01000000">
             <Border.ContextMenu>
                 <ContextMenu>
                     <MenuItem Header="{x:Static local:Strings.TaskManager}" Command="{Binding TaskManagerCommand}" />
@@ -111,13 +114,17 @@
 
             <Grid>
                 <!-- Left: Start. -->
-                <StackPanel x:Name="LeftGroup"
-                            Margin="6,0,0,0"
-                            HorizontalAlignment="Left"
-                            Orientation="Horizontal"
-                            SizeChanged="OnSideGroupSizeChanged">
+                <visuals:GlassPanel x:Name="LeftGroup"
+                                    Margin="5,0,0,0"
+                                    Height="{Binding IslandHeight}"
+                                    Radius="{Binding IslandRadius}"
+                                    Padding="3"
+                                    HorizontalAlignment="Left"
+                                    VerticalAlignment="Center"
+                                    SizeChanged="OnSideGroupSizeChanged">
                     <Button Style="{StaticResource BarButton}"
-                            Width="42"
+                            Width="{Binding StartButtonSize}"
+                            Margin="0"
                             Padding="0"
                             Command="{Binding StartCommand}"
                             MouseRightButtonUp="OnStartRightClick"
@@ -128,14 +135,18 @@
                               Fill="{StaticResource AccentBrush}"
                               Stretch="Uniform" />
                     </Button>
-                </StackPanel>
+                </visuals:GlassPanel>
 
                 <!-- Right: graphs, battery, tray, clock. -->
-                <StackPanel x:Name="RightGroup"
-                            Margin="0,0,6,0"
-                            HorizontalAlignment="Right"
-                            Orientation="Horizontal"
-                            SizeChanged="OnSideGroupSizeChanged">
+                <visuals:GlassPanel x:Name="RightGroup"
+                                    Margin="0,0,5,0"
+                                    Height="{Binding IslandHeight}"
+                                    Radius="{Binding IslandRadius}"
+                                    Padding="6,3,6,3"
+                                    HorizontalAlignment="Right"
+                                    VerticalAlignment="Center"
+                                    SizeChanged="OnSideGroupSizeChanged">
+                <StackPanel Orientation="Horizontal">
 
                     <ItemsControl Focusable="False"
                                   ItemTemplate="{StaticResource MetricTemplate}"
@@ -209,6 +220,7 @@
                         </StackPanel>
                     </Button>
                 </StackPanel>
+                </visuals:GlassPanel>
             </Grid>
         </Border>
 

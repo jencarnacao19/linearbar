@@ -7,22 +7,24 @@ namespace LinearBar.Core.Tests.Dock;
 public class BarGeometryTests
 {
     [Fact]
-    public void Default_settings_give_a_bar_with_room_for_magnified_icons_and_labels()
+    public void Default_settings_give_a_floating_dock_with_room_for_magnified_icons_and_labels()
     {
         var settings = new BarSettings();
         settings.Normalize();
 
         BarGeometry geometry = BarGeometry.From(settings);
 
-        Assert.Equal(52, geometry.BarHeight);
+        Assert.Equal(64, geometry.BarHeight);
+        Assert.Equal(40, geometry.IconSize);
         Assert.Equal(48, geometry.SlotWidth);
         Assert.Equal(47, geometry.CellHeight);
-        Assert.Equal(2, geometry.CellBottomMargin);
-        Assert.Equal(120, geometry.LensRadius);
+        Assert.Equal(7, geometry.CellBottomMargin);
+        Assert.Equal(54, geometry.IslandHeight);
+        Assert.Equal(19, geometry.IslandRadius);
         Assert.Equal(new Lens(0.75, 120), geometry.Lens);
 
-        // The tallest cell (47 × 1.75 + 2 = 84.25) sticks out 32.25 above the 52 px bar; add the label.
-        Assert.Equal(Math.Ceiling(32.25 + BarGeometry.LabelSpace), geometry.OverflowHeight);
+        // The tallest cell (47 × 1.75 + 7 = 89.25) sticks out 25.25 above the 64 px bar; add the label.
+        Assert.Equal(Math.Ceiling(25.25 + BarGeometry.LabelSpace), geometry.OverflowHeight);
         Assert.Equal(geometry.BarHeight + geometry.OverflowHeight, geometry.WindowHeight);
     }
 
@@ -45,7 +47,7 @@ public class BarGeometryTests
     [Fact]
     public void A_resting_cell_always_fits_inside_the_bar()
     {
-        for (double barHeight = 32; barHeight <= 96; barHeight += 4)
+        for (double barHeight = 40; barHeight <= 110; barHeight += 2)
         {
             var settings = new BarSettings { BarHeight = barHeight };
             settings.Dock.IconSize = 500; // absurd on purpose; Normalize must rein it in
@@ -53,7 +55,8 @@ public class BarGeometryTests
 
             BarGeometry geometry = BarGeometry.From(settings);
 
-            Assert.True(geometry.CellHeight + geometry.CellBottomMargin <= geometry.BarHeight, $"bar {barHeight}");
+            double platterTop = geometry.BarHeight - BarGeometry.IslandMargin;
+            Assert.True(geometry.CellBottomMargin + geometry.CellHeight + BarGeometry.PlatterTopPadding <= platterTop + 1e-9, $"bar {barHeight}");
         }
     }
 }

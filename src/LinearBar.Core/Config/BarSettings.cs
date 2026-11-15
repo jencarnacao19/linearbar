@@ -10,16 +10,18 @@ public sealed class BarSettings
     public int SchemaVersion { get; set; } = 1;
 
     /// <summary>Height of the bar strip in device-independent pixels. This is the screen space reserved.</summary>
-    public double BarHeight { get; set; } = 52;
+    public double BarHeight { get; set; } = 64;
 
-    /// <summary>Opacity of the bar background, 0.2–1.</summary>
-    public double BarOpacity { get; set; } = 0.88;
+    /// <summary>Strength of the dark tint of the glass, 0.2–1 (higher is darker and less see-through).</summary>
+    public double BarOpacity { get; set; } = 0.5;
 
     /// <summary>Hide the Windows taskbar while LinearBar runs (it is restored on exit).</summary>
     public bool HideWindowsTaskbar { get; set; } = true;
 
     /// <summary>Show notification-area (system tray) icons.</summary>
     public bool ShowTray { get; set; } = true;
+
+    public AppearanceSettings Appearance { get; set; } = new();
 
     public DockSettings Dock { get; set; } = new();
 
@@ -40,14 +42,17 @@ public sealed class BarSettings
     public void Normalize()
     {
         Dock ??= new DockSettings();
+        Appearance ??= new AppearanceSettings();
         Metrics ??= new MetricsSettings();
         Clock ??= new ClockSettings();
         Pinned ??= [];
 
-        BarHeight = ClampOrDefault(BarHeight, 32, 96, 52);
-        BarOpacity = ClampOrDefault(BarOpacity, 0.2, 1, 0.88);
+        BarHeight = ClampOrDefault(BarHeight, 40, 110, 64);
+        BarOpacity = ClampOrDefault(BarOpacity, 0.2, 1, 0.5);
+        Appearance.CornerSmoothing = ClampOrDefault(Appearance.CornerSmoothing, 0, 1, 0.6);
 
-        Dock.IconSize = ClampOrDefault(Dock.IconSize, 16, Math.Max(16, BarHeight - 10), Math.Min(40, BarHeight - 10));
+        double maxIcon = Math.Max(16, LinearBar.Core.Dock.BarGeometry.MaxIconSize(BarHeight));
+        Dock.IconSize = ClampOrDefault(Dock.IconSize, 16, maxIcon, Math.Min(40, maxIcon));
         Dock.Spacing = ClampOrDefault(Dock.Spacing, 0, 32, 8);
         Dock.MaxScale = ClampOrDefault(Dock.MaxScale, 1, 3, 1.75);
         Dock.LensRadius = ClampOrDefault(Dock.LensRadius, 1, 6, 2.5);
@@ -95,6 +100,18 @@ public sealed class DockSettings
 
     /// <summary>Show the app name above the hovered icon.</summary>
     public bool ShowLabels { get; set; } = true;
+
+    /// <summary>Put every icon on a squircle glass tile so all icons share one shape.</summary>
+    public bool IconTiles { get; set; } = true;
+}
+
+public sealed class AppearanceSettings
+{
+    /// <summary>Blur what is behind the glass islands (frosted glass). Off: tinted glass only.</summary>
+    public bool Blur { get; set; } = true;
+
+    /// <summary>Corner smoothing of the squircles: 0 = ordinary rounded corners, 1 = smoothest.</summary>
+    public double CornerSmoothing { get; set; } = 0.6;
 }
 
 public sealed class MetricsSettings
