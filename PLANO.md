@@ -187,7 +187,7 @@ da direita. O `MagnifyPanel` passou a ter margens esquerda e direita separadas e
 quando não cabe. Compila e os 102 testes passam em Linux; o CI não correu para este
 commit, por isso confirmar na fase 1 (ou fazer um push, que volta a correr o CI).
 
-**Por fazer na fase 0:** README e ícone da aplicação.
+**Fase 0 concluída** com o README e o ícone da aplicação. Próximo passo: fase 1, no PC.
 
 ## 7. Continuar no PC
 
