@@ -105,7 +105,7 @@ menus de contexto completos.
 
 *Feito quando:* dá para trabalhar um dia inteiro sem sentir falta da taskbar do Windows.
 
-### Fase 3 — Plugins
+### Fase 3 — Plugins (primeira versão feita)
 
 O sistema de plugins da secção 4: formato, carregamento, permissões, e uma primeira leva
 de plugins de exemplo.
@@ -281,6 +281,11 @@ no ecrã quando cabe e desliza para o lado livre quando não cabe (`DockLayout.P
 no ecrã de 1024 px do CI os ícones já aparecem no tamanho normal.
 
 **Fase 0 concluída** com o README e o ícone da aplicação. Próximo passo: fase 1, no PC.
+
+**Plugins (fase 3, primeira versão):** sistema de plugins de script (`plugin.json` + JSON),
+anfitrião com tempo máximo e recuo em falhas, e plugins incluídos — Claude, Codex,
+Antigravity, música a tocar, meteorologia e latência. Formato documentado em
+`plugins/README.md`. Falta: permissões pedidas ao instalar, plugins .NET e catálogo.
 
 ## 8. Continuar no PC
 

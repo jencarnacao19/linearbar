@@ -17,6 +17,14 @@ Taskbar alternativa para Windows 10 e 11: dock com ícones que aumentam ao passa
 - **Gráficos ao vivo** de CPU, RAM e rede (descarga e envio), e bateria em portáteis.
   Clicar num gráfico abre o Gestor de Tarefas.
 - **Tray**, botão Iniciar e relógio com data (abre o centro de notificações).
+- **Plugins** em qualquer linguagem (ver [plugins/README.md](plugins/README.md)). Incluídos:
+  - **Claude** — tokens do bloco de 5 h e quando reinicia (registos locais do Claude Code);
+  - **Codex** — percentagem dos limites de 5 h e semanal (registos do Codex CLI);
+  - **Antigravity** — quota segundo `agy /usage` (experimental);
+  - **A tocar** — música/vídeo de qualquer app, com capa e controlos;
+  - **Meteorologia** — Open-Meteo, sem conta;
+  - **Latência** — exemplo de plugin de script (desligado por omissão).
+- Tudo em **squircles** (cantos contínuos) e vidro fosco.
 - Na primeira execução importa as apps fixadas na taskbar do Windows.
 - Esconde a taskbar do Windows e repõe-na sempre, mesmo depois de uma falha.
 
@@ -59,6 +67,12 @@ gravado. Também se abrem pelo menu de clique direito na barra. Exemplo:
   "dock": { "iconSize": 40, "spacing": 8, "magnify": true, "maxScale": 1.75, "lensRadius": 2.5, "showLabels": true },
   "metrics": { "enabled": true, "intervalMs": 1000, "historyLength": 60, "showCpu": true, "showMemory": true, "showNetwork": true, "showBattery": true },
   "clock": { "show": true, "timeFormat": "HH:mm", "showDate": true, "dateFormat": "ddd, d MMM" },
+  "plugins": {
+    "weather": { "city": "Lisboa" },
+    "claude": { "blockTokenLimit": 5000000 },
+    "ping": { "enabled": true, "host": "1.1.1.1" },
+    "agy": { "enabled": false }
+  },
   "pinned": [ { "path": "C:\\Windows\\explorer.exe" } ]
 }
 ```
