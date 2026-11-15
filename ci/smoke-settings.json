@@ -1,0 +1,18 @@
+{
+  // Settings used by ci/smoke-test.ps1: a fixed set of pins that exist on any Windows
+  // install, and fast sampling so the graphs have data within a few seconds.
+  "hideWindowsTaskbar": true,
+  "importedTaskbarPins": true,
+  "metrics": {
+    "intervalMs": 500
+  },
+  "pinned": [
+    { "path": "C:\\Windows\\explorer.exe" },
+    { "path": "C:\\Windows\\System32\\cmd.exe" },
+    { "path": "C:\\Windows\\System32\\notepad.exe" },
+    { "path": "C:\\Windows\\System32\\mspaint.exe" },
+    { "path": "C:\\Windows\\regedit.exe" },
+    { "path": "C:\\Windows\\System32\\taskmgr.exe" },
+    { "path": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" }
+  ]
+}

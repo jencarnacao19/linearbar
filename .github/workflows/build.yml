@@ -1,0 +1,65 @@
+name: build
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+
+jobs:
+  # The whole solution must keep building on Linux (EnableWindowsTargeting): that is how
+  # cloud agents and non-Windows contributors compile the WPF project.
+  linux:
+    name: Build and test (Linux)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 10.0.x
+      - name: Build
+        run: dotnet build LinearBar.sln -c Release
+      - name: Test
+        run: dotnet test LinearBar.sln -c Release --no-build
+
+  # The only place the Win32 side is exercised automatically: the real bar is started on a
+  # real Windows desktop and checks itself (see src/LinearBar/SmokeTest.cs).
+  windows:
+    name: Build, test and smoke test (Windows)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 10.0.x
+      - name: Build
+        run: dotnet build LinearBar.sln -c Release
+      - name: Test
+        run: dotnet test LinearBar.sln -c Release --no-build
+      - name: Publish
+        run: dotnet publish src/LinearBar/LinearBar.csproj -c Release -r win-x64 --self-contained false -o publish
+      - name: Smoke test
+        shell: pwsh
+        run: ./ci/smoke-test.ps1 -Exe publish/LinearBar.exe -Output smoke
+      - name: Upload smoke test output
+        if: always()
+        uses: actions/upload-artifact@v5
+        with:
+          name: smoke-test
+          path: smoke
+          if-no-files-found: warn
+      - name: Upload app
+        uses: actions/upload-artifact@v5
+        with:
+          name: LinearBar-win-x64
+          path: publish
