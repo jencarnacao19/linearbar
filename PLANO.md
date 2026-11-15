@@ -179,13 +179,10 @@ ecrã 1024×768, 100 %):
 - Escalas de ecrã diferentes de 100 %, vários monitores, Windows 11 de secretária.
 - Cliques nos ícones de tray, clique/minimizar/alternar nos ícones do dock.
 
-**Corrigido depois dessa verificação, ainda sem correr em Windows:** em ecrãs estreitos o
-dock encolhia demasiado (no ecrã de 1024 px do CI os ícones ficaram a 40 % do tamanho),
-porque era centrado no ecrã com a mesma margem dos dois lados — a do grupo mais largo, o
-da direita. O `MagnifyPanel` passou a ter margens esquerda e direita separadas e
-`DockLayout.PlaceOrigin` centra o dock no ecrã quando cabe e desliza-o para o lado livre
-quando não cabe. Compila e os 102 testes passam em Linux; o CI não correu para este
-commit, por isso confirmar na fase 1 (ou fazer um push, que volta a correr o CI).
+**Corrigido e verificado em Windows** (commit `2981095`): em ecrãs estreitos o dock
+encolhia até 40 %, por ser centrado com a mesma margem dos dois lados. Agora fica centrado
+no ecrã quando cabe e desliza para o lado livre quando não cabe (`DockLayout.PlaceOrigin`);
+no ecrã de 1024 px do CI os ícones já aparecem no tamanho normal.
 
 **Fase 0 concluída** com o README e o ícone da aplicação. Próximo passo: fase 1, no PC.
 
