@@ -61,7 +61,7 @@ Por ordem de valor para o utilizador. Esforço: P (horas), M (1–3 dias), G (um
 | 7 | Relógio com calendário, próxima reunião, fusos horários, temporizador | Substitui várias apps pequenas | M |
 | 8 | Animações: salto ao abrir, minimizar «para dentro» do ícone | Dá o toque macOS | P |
 | 9 | Vários monitores: uma barra por ecrã com as janelas desse ecrã | Essencial para quem tem 2+ ecrãs | M |
-| 10 | Aparência: desfoque/acrílico, tema claro/escuro, cor de destaque do Windows, modo «ilha flutuante» | Aspeto | M |
+| 10 | Aparência: tema claro, cor de destaque do Windows, mais estilos de vidro | Aspeto | M |
 | 11 | Ocultar automaticamente; barra no topo | Preferência comum | M |
 | 12 | Janela de definições (em vez de editar JSON) | Usável por quem não é técnico | M |
 | 13 | Áreas de trabalho virtuais: indicador e troca | Para quem as usa | M |
@@ -81,7 +81,7 @@ Estrutura do projeto, barra a reservar espaço, dock com ampliação, gráficos 
 tray, relógio, definições em JSON, CI.
 
 *Feito quando:* compila, os testes passam e a barra arranca em Windows sem erros.
-**Já existe neste ramo** — ver secção 6.
+**Já existe neste ramo** — ver secção 7.
 
 ### Fase 1 — Validação no PC real (obrigatória antes de qualquer outra coisa)
 
@@ -105,23 +105,113 @@ menus de contexto completos.
 
 *Feito quando:* dá para trabalhar um dia inteiro sem sentir falta da taskbar do Windows.
 
-### Fase 3 — Barra útil
+### Fase 3 — Plugins
+
+O sistema de plugins da secção 4: formato, carregamento, permissões, e uma primeira leva
+de plugins de exemplo.
+
+*Feito quando:* um plugin escrito num ficheiro de texto (sem compilar nada) aparece na barra,
+atualiza-se, responde a cliques, e um plugin que falha ou bloqueia não afeta a barra.
+
+### Fase 4 — Barra útil
 
 Painel de processos (2), GPU/disco/temperaturas (6), controlo de média (4), volume por
-aplicação (5), calendário (7).
+aplicação (5), calendário (7). Sempre que possível, feitos *como plugins* incluídos de
+origem: é a melhor prova de que a API de plugins chega.
 
 *Feito quando:* cada gráfico responde a um clique com informação ou ação úteis.
 
-### Fase 4 — Aparência e conforto
+### Fase 5 — Aparência e conforto
 
-Janela de definições (12), temas e acrílico (10), vários monitores (9), ocultar
+Janela de definições (12), temas claro/escuro, vários monitores (9), ocultar
 automaticamente e barra no topo (11).
 
-### Fase 5 — Distribuição
+### Fase 6 — Distribuição e catálogo
 
-Arranque com o Windows, instalador, assinatura de código, atualizações (18).
+Arranque com o Windows, instalador, assinatura de código, atualizações (18), e um
+catálogo de plugins para instalar com um clique.
 
-## 4. Decisões técnicas
+## 4. Plugins
+
+Objetivo: que a barra faça «1001 coisas» sem que cada uma tenha de ser programada no
+LinearBar. A maior parte das funcionalidades da secção 2 deve poder ser um plugin.
+
+### Dois níveis
+
+| Nível | Para quê | Como | Riscos |
+| --- | --- | --- | --- |
+| **1. Plugins de script** (começar por aqui) | Widgets de texto, ícone, gráfico, contador; ações simples | Um programa qualquer (PowerShell, Python, Node, .exe) que o LinearBar executa; fala por JSON no stdout/stdin. Mesmo modelo que o xbar/SwiftBar (macOS) e os módulos *custom* do Waybar | Corre noutro processo: se falhar ou bloquear, a barra não sofre |
+| **2. Plugins .NET** | Widgets ricos com interface própria (painéis, miniaturas, animações) | DLL carregada num `AssemblyLoadContext` próprio, contra um SDK `LinearBar.Plugins` | Corre dentro da barra: pode deixá-la lenta ou derrubá-la; só para plugins de confiança |
+
+### Plugin de script
+
+Cada plugin é uma pasta em `%APPDATA%\LinearBar\plugins\<nome>\` com um `plugin.json`:
+
+```json
+{
+  "id": "meteo",
+  "name": "Meteorologia",
+  "version": "1.0.0",
+  "run": "pwsh -NoProfile -File meteo.ps1",
+  "mode": "interval",
+  "intervalSeconds": 600,
+  "placement": "right",
+  "permissions": ["network"]
+}
+```
+
+`mode` pode ser `interval` (executa de N em N segundos e lê o resultado) ou `stream`
+(fica a correr e envia uma linha JSON sempre que algo muda — para média, notificações, etc.).
+
+O plugin responde com JSON, por exemplo:
+
+```json
+{
+  "text": "18°",
+  "icon": "weather-cloudy",
+  "tooltip": "Lisboa: nublado, máx. 21°",
+  "graph": [12, 14, 18, 17, 16],
+  "badge": null,
+  "menu": [
+    { "title": "Abrir previsão", "open": "https://…" },
+    { "title": "Atualizar", "action": "refresh" }
+  ],
+  "onClick": { "action": "menu" }
+}
+```
+
+O LinearBar desenha tudo com o mesmo vidro e squircles do resto da barra, por isso um
+plugin nunca destoa. Ações que o plugin pode pedir: abrir URL/ficheiro/app, executar um
+comando do próprio plugin, mostrar um painel com lista, mostrar uma notificação, copiar
+texto.
+
+### O que a API expõe (ambos os níveis)
+
+- **Onde aparecer:** ilha da direita, ilha da esquerda, como item do dock (com badge, ex.:
+  e-mails por ler) ou só em segundo plano.
+- **Dados de entrada:** eventos da barra (janela ativada, app aberta/fechada, mudança de
+  ecrã, bloqueio de sessão), métricas do sistema, definições do próprio plugin.
+- **Contributos:** widgets, entradas no menu de contexto dos ícones do dock, atalhos de
+  teclado, comandos para um futuro lançador (tipo Spotlight).
+- **Badges no dock:** um plugin pode pôr contadores ou progresso no ícone de outra app
+  (ex.: GitHub → número de PRs no ícone do browser).
+
+### Segurança
+
+- Cada plugin declara `permissions` (rede, ficheiros, executar programas, ler janelas);
+  a barra pergunta ao instalar e mostra-as nas definições.
+- Plugins de script correm com tempo máximo, limite de memória e sem consola visível;
+  se falharem repetidamente são desativados e aparece um aviso.
+- Plugins .NET só a partir de pastas escolhidas pelo utilizador; mais tarde, assinados.
+
+### Exemplos para a primeira leva (fase 3)
+
+Meteorologia, cotações/cripto, pomodoro, histórico da área de transferência, lista de
+tarefas, ping/latência, IP e VPN, contentores Docker, notificações do GitHub, próxima
+reunião do calendário, bateria dos auscultadores Bluetooth, controlo de casa inteligente,
+conversor de moedas, pesquisa rápida na web.
+
+## 5. Decisões técnicas
 
 Valem mesmo que o código atual seja refeito.
 
@@ -136,8 +226,13 @@ Valem mesmo que o código atual seja refeito.
   ignora píxeis com alfa 0 em janelas *layered*). Por baixo dos ícones ampliados
   desenha-se uma «placa» quase invisível (alfa 1/255) para o rato não cair nos intervalos.
   A janela é esticada ao interceptar `WM_WINDOWPOSCHANGING` (`BarWindow.xaml.cs`).
-- **Consequência:** o desfoque/acrílico não pode ser aplicado a essa janela (desfocaria
-  também a faixa transparente). Para o ter, usar uma segunda janela só de fundo, por baixo.
+- **Vidro fosco.** O desfoque do sistema aplica-se à janela inteira, por isso não pode
+  estar na janela da barra (desfocaria também a faixa transparente). Fica numa segunda
+  janela Win32, logo abaixo da barra, recortada com uma região à forma das ilhas
+  (`Shell/BackdropWindow.cs`); a barra pinta por cima a tinta, o brilho e o rebordo.
+- **Squircles.** Todas as superfícies usam cantos contínuos (suavização do Figma, 0,6 como
+  na Apple), portados de phamfoo/figma-squircle (MIT) para `Core/Geometry/Squircle.cs`.
+  Os ícones ficam em tiles squircle tingidos com a cor dominante do ícone.
 - **Animar com transformações, não com layout.** Os ícones são dispostos uma vez; a lente
   só altera `RenderTransform` (`MagnifyPanel.cs`).
 - **Ícones grandes.** Os ícones das janelas têm 32 px; pedem-se os de 256 px ao shell e
@@ -148,17 +243,18 @@ Valem mesmo que o código atual seja refeito.
   se o processo morrer, o arranque seguinte repõe-no. `LinearBar.exe --restore-taskbar`
   repõe à mão.
 
-## 5. Riscos
+## 6. Riscos
 
 | Risco | Mitigação |
 | --- | --- |
 | Utilizador fica sem taskbar após uma falha | Ficheiro de recuperação + `--restore-taskbar` + repor antes de qualquer outra limpeza ao sair |
 | Atualizações do Windows 11 mudam o tray ou a taskbar | Ficar em cima das versões do ManagedShell; teste de fumo no CI em cada alteração |
 | Desempenho da janela transparente em 4K | Medir na fase 1; a janela só é redesenhada durante a animação |
+| Um plugin lento ou malicioso | Plugins de script noutro processo, com limites; permissões declaradas; plugins .NET só de confiança |
 | ManagedShell deixa de ser mantido | Licença permite fork; a dependência está isolada em `Shell/` e `BarWindow` |
 | Ícones do sistema no tray (rede, volume) em falta no Windows 11 | Verificar na fase 1; alternativa: widgets próprios de volume e rede |
 
-## 6. Estado deste ramo
+## 7. Estado deste ramo
 
 O ramo contém uma primeira implementação da fase 0 (cerca de 7 000 linhas, testes incluídos).
 
@@ -186,7 +282,7 @@ no ecrã de 1024 px do CI os ícones já aparecem no tamanho normal.
 
 **Fase 0 concluída** com o README e o ícone da aplicação. Próximo passo: fase 1, no PC.
 
-## 7. Continuar no PC
+## 8. Continuar no PC
 
 Requisitos: Windows 10 ou 11 e o [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0).
 
