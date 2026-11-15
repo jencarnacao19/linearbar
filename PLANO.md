@@ -162,9 +162,10 @@ Valem mesmo que o código atual seja refeito.
 
 O ramo contém uma primeira implementação da fase 0 (cerca de 7 000 linhas, testes incluídos).
 
-**Verificado automaticamente** (GitHub Actions, Windows Server 2025, ecrã 1024×768, 100 %):
+**Verificado automaticamente** no commit `bdc9176` (GitHub Actions, Windows Server 2025,
+ecrã 1024×768, 100 %):
 
-- Compila em Linux e em Windows; 95 testes unitários passam.
+- Compila em Linux e em Windows; os 95 testes unitários de então passam.
 - A barra arranca, reserva exatamente a sua altura e a taskbar do Windows é escondida e reposta.
 - Dock com 8 apps (fixadas e abertas, agrupadas), ícones de 256 px e nomes corretos.
 - Gráficos com leituras plausíveis de CPU, memória e rede; 4 ícones de tray.
@@ -178,11 +179,13 @@ O ramo contém uma primeira implementação da fase 0 (cerca de 7 000 linhas, te
 - Escalas de ecrã diferentes de 100 %, vários monitores, Windows 11 de secretária.
 - Cliques nos ícones de tray, clique/minimizar/alternar nos ícones do dock.
 
-**Problema conhecido:** em ecrãs estreitos o dock encolhe demasiado (no ecrã de 1024 px do
-CI os ícones ficaram a 40 % do tamanho). Causa: é centrado no ecrã com a mesma margem dos
-dois lados — a do grupo mais largo, o da direita — em vez de usar o espaço livre real.
-Correção, ainda não aplicada neste ramo: dar ao `MagnifyPanel` margens esquerda e direita
-separadas, centrar no ecrã quando couber e, se não couber, deslizar para o lado livre.
+**Corrigido depois dessa verificação, ainda sem correr em Windows:** em ecrãs estreitos o
+dock encolhia demasiado (no ecrã de 1024 px do CI os ícones ficaram a 40 % do tamanho),
+porque era centrado no ecrã com a mesma margem dos dois lados — a do grupo mais largo, o
+da direita. O `MagnifyPanel` passou a ter margens esquerda e direita separadas e
+`DockLayout.PlaceOrigin` centra o dock no ecrã quando cabe e desliza-o para o lado livre
+quando não cabe. Compila e os 102 testes passam em Linux; o CI não correu para este
+commit, por isso confirmar na fase 1 (ou fazer um push, que volta a correr o CI).
 
 **Por fazer na fase 0:** README e ícone da aplicação.
 

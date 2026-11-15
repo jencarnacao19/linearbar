@@ -45,7 +45,8 @@ internal sealed class MagnifyPanel : Panel
     public static readonly DependencyProperty BottomMarginProperty = Register(nameof(BottomMargin), 2.0);
     public static readonly DependencyProperty MaxScaleProperty = Register(nameof(MaxScale), 1.75);
     public static readonly DependencyProperty LensRadiusProperty = Register(nameof(LensRadius), 120.0);
-    public static readonly DependencyProperty SidePaddingProperty = Register(nameof(SidePadding), 0.0);
+    public static readonly DependencyProperty LeftInsetProperty = Register(nameof(LeftInset), 0.0);
+    public static readonly DependencyProperty RightInsetProperty = Register(nameof(RightInset), 0.0);
 
     private SlotPlacement[] _slots = [];
     private SmoothDamp _amount = new(0);
@@ -113,11 +114,18 @@ internal sealed class MagnifyPanel : Panel
         set => SetValue(LensRadiusProperty, value);
     }
 
-    /// <summary>Width at each end of the panel the dock must keep clear (the side widgets).</summary>
-    public double SidePadding
+    /// <summary>Width at the left end of the panel the dock must keep clear (the Start button).</summary>
+    public double LeftInset
     {
-        get => (double)GetValue(SidePaddingProperty);
-        set => SetValue(SidePaddingProperty, value);
+        get => (double)GetValue(LeftInsetProperty);
+        set => SetValue(LeftInsetProperty, value);
+    }
+
+    /// <summary>Width at the right end of the panel the dock must keep clear (graphs, tray, clock).</summary>
+    public double RightInset
+    {
+        get => (double)GetValue(RightInsetProperty);
+        set => SetValue(RightInsetProperty, value);
     }
 
     /// <summary>Current strength of the lens, from 0 (resting) to 1 (fully magnified).</summary>
@@ -171,12 +179,14 @@ internal sealed class MagnifyPanel : Panel
         double cellHeight = CellHeight;
         double fullMagnification = Math.Max(0, MaxScale - 1);
 
-        // Shrink the whole dock when it would not fit between the side widgets.
-        double available = Math.Max(0, finalSize.Width - 2 * SidePadding);
-        _fit = DockLayout.FitScale(count, slotWidth, new Lens(fullMagnification, LensRadius).MaxDisplacement, available);
+        // Shrink the whole dock when it would not fit between the widgets at either end,
+        // then centre it on the screen as far as those widgets allow.
+        double lensMargin = new Lens(fullMagnification, LensRadius).MaxDisplacement;
+        double available = Math.Max(0, finalSize.Width - LeftInset - RightInset);
+        _fit = DockLayout.FitScale(count, slotWidth, lensMargin, available);
 
         double slot = slotWidth * _fit;
-        _origin = (finalSize.Width - count * slot) / 2;
+        _origin = DockLayout.PlaceOrigin(finalSize.Width, LeftInset, RightInset, count * slot, lensMargin * _fit);
 
         var lens = new Lens(fullMagnification * _amount.Value, LensRadius * _fit);
         DockLayout.Arrange(_slots, _origin, slot, _cursor, lens);

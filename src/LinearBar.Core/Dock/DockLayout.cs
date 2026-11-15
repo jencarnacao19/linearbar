@@ -80,6 +80,34 @@ public static class DockLayout
     }
 
     /// <summary>
+    /// Left edge of the resting dock inside a container that has widgets at both ends.
+    /// </summary>
+    /// <remarks>
+    /// The dock is centred on the container (i.e. on the screen) whenever that leaves room
+    /// for the lens on both sides. If the widgets at one end are too wide for that, the dock
+    /// slides towards the other end just far enough to stay clear of them. If it cannot fit
+    /// at all, it is centred in the free space and will overlap as little as possible.
+    /// </remarks>
+    /// <param name="containerWidth">Width of the container.</param>
+    /// <param name="leftInset">Width occupied at the left end.</param>
+    /// <param name="rightInset">Width occupied at the right end.</param>
+    /// <param name="dockWidth">Resting width of the dock.</param>
+    /// <param name="lensMargin">Room the lens needs on each side of the dock.</param>
+    public static double PlaceOrigin(double containerWidth, double leftInset, double rightInset, double dockWidth, double lensMargin)
+    {
+        double freeLeft = Math.Max(0, leftInset);
+        double freeRight = Math.Max(freeLeft, containerWidth - Math.Max(0, rightInset));
+
+        double centred = (containerWidth - dockWidth) / 2;
+        double minimum = freeLeft + lensMargin;
+        double maximum = freeRight - lensMargin - dockWidth;
+
+        return maximum >= minimum
+            ? Math.Clamp(centred, minimum, maximum)
+            : freeLeft + (freeRight - freeLeft - dockWidth) / 2;
+    }
+
+    /// <summary>
     /// Uniform shrink factor (at most 1) that makes <paramref name="count"/> slots, plus the
     /// room the lens needs on both sides, fit into <paramref name="availableWidth"/>.
     /// </summary>

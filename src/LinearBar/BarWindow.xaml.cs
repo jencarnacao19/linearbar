@@ -167,8 +167,7 @@ internal partial class BarWindow : AppBarWindow
         double left = LeftGroup.ActualWidth + LeftGroup.Margin.Left;
         double right = RightGroup.ActualWidth + RightGroup.Margin.Right;
 
-        // The dock is centred on the screen, so both sides give way to the wider group.
-        DockHost.SidePadding = Math.Max(left, right) + DockSideGap;
+        DockHost.SetInsets(left + DockSideGap, right + DockSideGap);
     }
 
     // ---- Start button -------------------------------------------------------------------

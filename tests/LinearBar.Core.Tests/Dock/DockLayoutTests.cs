@@ -101,6 +101,34 @@ public class DockLayoutTests
     }
 
     [Fact]
+    public void Dock_is_centred_on_the_screen_when_the_widgets_leave_room()
+    {
+        // 1920 wide, 60 taken on the left, 460 on the right, dock 480 wide, lens needs 45 a side.
+        Assert.Equal(720, DockLayout.PlaceOrigin(1920, 60, 460, 480, 45));
+    }
+
+    [Fact]
+    public void Dock_slides_away_from_a_wide_widget_group()
+    {
+        // Centred it would span 432…912 plus 45 for the lens, running into the group that
+        // starts at 906. It moves left just enough: 906 - 45 - 480.
+        double origin = DockLayout.PlaceOrigin(1344, 60, 438, 480, 45);
+
+        Assert.Equal(381, origin);
+        Assert.True(origin - 45 >= 60);
+    }
+
+    [Fact]
+    public void Dock_that_cannot_fit_is_centred_in_the_free_space()
+    {
+        // Free space is 100…500 (400 wide); the dock is 480 wide.
+        Assert.Equal(60, DockLayout.PlaceOrigin(800, 100, 300, 480, 45));
+
+        // Insets larger than the container must not throw or run off to infinity.
+        Assert.Equal(900 - 240, DockLayout.PlaceOrigin(800, 900, 900, 480, 45));
+    }
+
+    [Fact]
     public void FitScale_shrinks_only_when_the_dock_does_not_fit()
     {
         Assert.Equal(1, DockLayout.FitScale(10, 48, 45, 1000));

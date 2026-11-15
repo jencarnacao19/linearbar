@@ -12,7 +12,8 @@ internal partial class DockView : UserControl
     private const double LabelGap = 7;
 
     private MagnifyPanel? _panel;
-    private double _sidePadding;
+    private double _leftInset;
+    private double _rightInset;
 
     public DockView()
     {
@@ -22,17 +23,16 @@ internal partial class DockView : UserControl
     /// <summary>The panel doing the layout, once the items control has created it.</summary>
     public MagnifyPanel? Panel => _panel;
 
-    /// <summary>Width at both ends of the bar that the dock must not grow into.</summary>
-    public double SidePadding
+    /// <summary>Tells the dock how much of each end of the bar is taken by other widgets.</summary>
+    public void SetInsets(double left, double right)
     {
-        get => _sidePadding;
-        set
+        _leftInset = left;
+        _rightInset = right;
+
+        if (_panel is not null)
         {
-            _sidePadding = value;
-            if (_panel is not null)
-            {
-                _panel.SidePadding = value;
-            }
+            _panel.LeftInset = left;
+            _panel.RightInset = right;
         }
     }
 
@@ -49,7 +49,8 @@ internal partial class DockView : UserControl
         }
 
         _panel = (MagnifyPanel)sender;
-        _panel.SidePadding = _sidePadding;
+        _panel.LeftInset = _leftInset;
+        _panel.RightInset = _rightInset;
         _panel.HoverChanged += OnHoverChanged;
     }
 
