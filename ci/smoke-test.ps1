@@ -33,6 +33,30 @@ Copy-Item (Join-Path $PSScriptRoot 'smoke-settings.json') $settings -Force
 
 $started = Get-Date
 
+# A colourful wallpaper, so the screenshots show the frosted glass (the CI desktop is black).
+try {
+    Add-Type -AssemblyName System.Drawing
+    Add-Type -Namespace Native -Name Desktop -MemberDefinition '[DllImport("user32.dll", CharSet = CharSet.Unicode)] public static extern bool SystemParametersInfo(int action, int param, string value, int flags);'
+    $wallpaper = Join-Path $Output 'wallpaper.png'
+    $bitmap = [System.Drawing.Bitmap]::new(1920, 1080)
+    $graphics = [System.Drawing.Graphics]::FromImage($bitmap)
+    $rect = [System.Drawing.Rectangle]::new(0, 0, 1920, 1080)
+    $blend = [System.Drawing.Drawing2D.LinearGradientBrush]::new($rect, [System.Drawing.Color]::FromArgb(255, 255, 94, 58), [System.Drawing.Color]::FromArgb(255, 58, 80, 255), 20.0)
+    $graphics.FillRectangle($blend, $rect)
+    foreach ($spot in @(@(250, 700, 'FFD23F'), @(900, 820, '3BCEAC'), @(1500, 650, 'EE4266'), @(600, 300, '540D6E'))) {
+        $brush = [System.Drawing.SolidBrush]::new([System.Drawing.ColorTranslator]::FromHtml('#' + $spot[2]))
+        $graphics.FillEllipse($brush, $spot[0] - 220, $spot[1] - 220, 440, 440)
+    }
+    $graphics.Dispose()
+    $bitmap.Save($wallpaper, [System.Drawing.Imaging.ImageFormat]::Png)
+    $bitmap.Dispose()
+    [Native.Desktop]::SystemParametersInfo(0x0014, 0, $wallpaper, 3) | Out-Null
+    Start-Sleep -Seconds 1
+}
+catch {
+    Write-Host "Could not set a wallpaper: $($_.Exception.Message)"
+}
+
 # Give the dock some running windows.
 $apps = @()
 foreach ($name in 'notepad.exe', 'mspaint.exe') {
