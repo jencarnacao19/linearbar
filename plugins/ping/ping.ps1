@@ -7,7 +7,7 @@ $historyFile = Join-Path $env:TEMP 'linearbar-ping-history.txt'
 
 $ms = $null
 try {
-    $reply = (New-Object System.Net.NetworkInformation.Ping).Send($target, 3000)
+    $reply = (New-Object System.Net.NetworkInformation.Ping).Send($target, 2000)
     if ($reply.Status -eq 'Success') { $ms = [int]$reply.RoundtripTime }
 }
 catch { }

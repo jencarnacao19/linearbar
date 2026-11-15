@@ -8,7 +8,7 @@
   "run": "powershell -NoProfile -ExecutionPolicy Bypass -File ping.ps1",
   "mode": "interval",
   "intervalSeconds": 10,
-  "timeoutSeconds": 8,
+  "timeoutSeconds": 20,
   "permissions": ["network"],
   "enabledByDefault": false,
   "options": {
