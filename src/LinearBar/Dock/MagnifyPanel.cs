@@ -161,6 +161,9 @@ internal sealed class MagnifyPanel : Panel
         set => SetValue(RightInsetProperty, value);
     }
 
+    /// <summary>Uniform shrink applied so the dock fits between the side islands (1 = full size).</summary>
+    public double Fit => _fit;
+
     /// <summary>Current strength of the lens, from 0 (resting) to 1 (fully magnified).</summary>
     public double Amount => _amount.Value;
 

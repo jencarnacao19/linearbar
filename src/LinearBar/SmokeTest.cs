@@ -268,7 +268,9 @@ internal sealed class SmokeTest(ShellHost host, StartupOptions options, Action<i
         }
 
         double x = resting[target].Center;
-        double y = panel.ActualHeight - panel.BottomMargin - panel.CellHeight / 2;
+        double cell = panel.CellHeight * panel.Fit;
+        double y = panel.ActualHeight - panel.BottomMargin - cell / 2;
+        Log.Info($"SMOKE: dock fit {panel.Fit:0.##} (icons at {panel.Fit * 100:0} % so the dock fits between the islands)");
         Point screen = panel.PointToScreen(new Point(x, y));
 
         Native.GetCursorPos(out Native.POINT original);
@@ -282,8 +284,8 @@ internal sealed class SmokeTest(ShellHost host, StartupOptions options, Action<i
         {
             // Climb into the transparent band, onto the magnified part of the icon: the dock
             // must keep tracking the pointer there.
-            double lift = panel.CellHeight * (maxScale - 1) * 0.6;
-            Native.SetCursorPos((int)screen.X, (int)(screen.Y - (panel.CellHeight / 2 + lift) * host.Window.DpiScale));
+            double lift = cell * (maxScale - 1) * 0.6;
+            Native.SetCursorPos((int)screen.X, (int)(screen.Y - (cell / 2 + lift) * host.Window.DpiScale));
             await Task.Delay(500);
             Check("dock keeps the pointer above the bar strip", panel.IsMouseOver && panel.Amount > 0.9,
                 $"amount {panel.Amount:0.##}, mouse over {panel.IsMouseOver}");
