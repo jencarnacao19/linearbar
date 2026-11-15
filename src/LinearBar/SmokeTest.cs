@@ -39,6 +39,7 @@ internal sealed class SmokeTest(ShellHost host, StartupOptions options, Action<i
             CheckMetrics();
             ReportDock();
             ReportTray();
+            await CheckPluginsAsync();
             await CheckMagnificationAsync();
             CheckPopups();
             SaveScreenshots();
@@ -145,6 +146,80 @@ internal sealed class SmokeTest(ShellHost host, StartupOptions options, Action<i
         }
 
         Check("dock has items", host.Dock.Items.Count > 0, $"{host.Dock.Items.Count} item(s)");
+    }
+
+    /// <summary>Waits for the plugins to report, logs them, and opens one panel for the screenshots.</summary>
+    private async Task CheckPluginsAsync()
+    {
+        var plugins = host.Plugins;
+        foreach (string error in plugins.LoadErrors)
+        {
+            Log.Warn("SMOKE: plugin load error: " + error);
+        }
+
+        // Script plugins and the weather need a few seconds (PowerShell start-up, network).
+        for (int i = 0; i < 40 && plugins.Widgets.Any(w => w.Id is "ping" or "weather" && !w.IsVisible && !w.HasError); i++)
+        {
+            await Task.Delay(500);
+        }
+
+        foreach (var widget in plugins.Widgets)
+        {
+            Log.Info($"SMOKE: plugin {widget.Id} ({widget.Placement}): visible {widget.IsVisible}, text '{widget.Text}', bars {widget.Bars.Count}, "
+                + $"graph {(widget.Graph?.Count ?? 0)}, error {widget.Output.Error ?? "none"}");
+        }
+
+        Check("built-in plugins are loaded", new[] { "nowplaying", "weather", "claude", "codex" }.All(id => plugins.Widgets.Any(w => w.Id == id)),
+            string.Join(", ", plugins.Widgets.Select(w => w.Id)));
+        Check("bundled script plugins are discovered", plugins.Widgets.Any(w => w.Id == "agy") && plugins.LoadErrors.Count == 0,
+            $"{plugins.LoadErrors.Count} load error(s)");
+
+        var ping = plugins.Widgets.FirstOrDefault(w => w.Id == "ping");
+        Check("script plugin runs end to end", ping is { IsVisible: true, HasError: false } && ping.Text?.Length > 0,
+            ping is null ? "ping plugin missing" : $"text '{ping.Text}', error {ping.Output.Error ?? "none"}");
+
+        var claude = plugins.Widgets.FirstOrDefault(w => w.Id == "claude");
+        Check("usage plugin renders", claude is { IsVisible: true, HasError: false }, claude?.Output.Error ?? $"text '{claude?.Text}'");
+
+        // Open the weather panel (or any visible one) so the screenshots show a pop-up.
+        var showcase = plugins.Widgets.FirstOrDefault(w => w.Id == "weather" && w.IsVisible && !w.HasError)
+            ?? plugins.Widgets.FirstOrDefault(w => w.IsVisible && w.Output.Panel is not null);
+        if (showcase is not null && FindWidgetElement(showcase) is { } element)
+        {
+            LinearBar.Plugins.PluginPanelPopup.Show(showcase, element);
+            await Task.Delay(600);
+            SaveScreenshots("panel", extraHeight: 420);
+            Check("plugin panel opens", true, showcase.Id);
+            Native.SetCursorPos(0, 0);
+            host.Window.Activate();
+            await Task.Delay(300);
+        }
+    }
+
+    private FrameworkElement? FindWidgetElement(LinearBar.Plugins.PluginWidgetViewModel widget)
+    {
+        FrameworkElement? found = null;
+        void Walk(DependencyObject node)
+        {
+            if (found is not null)
+            {
+                return;
+            }
+
+            if (node is Button { DataContext: var context } button && ReferenceEquals(context, widget))
+            {
+                found = button;
+                return;
+            }
+
+            for (int i = 0; i < VisualTreeHelper.GetChildrenCount(node); i++)
+            {
+                Walk(VisualTreeHelper.GetChild(node, i));
+            }
+        }
+
+        Walk(host.Window);
+        return found;
     }
 
     private void ReportTray()
@@ -276,7 +351,7 @@ internal sealed class SmokeTest(ShellHost host, StartupOptions options, Action<i
         }
     }
 
-    private void SaveScreenshots(string suffix = "resting")
+    private void SaveScreenshots(string suffix = "resting", int extraHeight = 60)
     {
         if (string.IsNullOrWhiteSpace(options.ScreenshotDirectory))
         {
@@ -304,7 +379,7 @@ internal sealed class SmokeTest(ShellHost host, StartupOptions options, Action<i
 
             // 2. What is actually on screen around the bar.
             var rect = window.WindowRect;
-            int margin = (int)(60 * window.DpiScale);
+            int margin = (int)(extraHeight * window.DpiScale);
             if (CaptureScreen(rect.Left, rect.Top - margin, rect.Width, rect.Height + margin) is { } screen)
             {
                 SavePng(screen, Path.Combine(options.ScreenshotDirectory, $"screen-{suffix}.png"));

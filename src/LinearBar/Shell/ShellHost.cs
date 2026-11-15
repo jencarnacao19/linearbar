@@ -55,7 +55,9 @@ internal sealed class ShellHost : IDisposable
         Dock = new DockViewModel(Shell, store, new AppIconLoader());
         Metrics = new MetricsViewModel(new WindowsMetricsSource(), settings.Metrics);
         Clock = new ClockViewModel(settings.Clock);
-        ViewModel = new BarViewModel(Shell, store, Dock, Metrics, Clock, exit);
+        Plugins = new LinearBar.Plugins.PluginHost();
+        Plugins.Apply(settings);
+        ViewModel = new BarViewModel(Shell, store, Dock, Metrics, Clock, Plugins, exit);
 
         ApplyAppearance(settings);
         Window = new BarWindow(Shell, AppBarScreen.FromPrimaryScreen(), ViewModel) { Backdrop = _backdrop };
@@ -83,6 +85,8 @@ internal sealed class ShellHost : IDisposable
     public MetricsViewModel Metrics { get; }
 
     public ClockViewModel Clock { get; }
+
+    public LinearBar.Plugins.PluginHost Plugins { get; }
 
     public BarViewModel ViewModel { get; }
 
@@ -126,6 +130,7 @@ internal sealed class ShellHost : IDisposable
             Window.Close();
         });
         Step("remove the backdrop", () => _backdrop?.Dispose());
+        Step("stop the plugins", Plugins.Dispose);
         Step("stop the metrics", Metrics.Dispose);
         Step("stop the clock", Clock.Dispose);
         Step("release the dock", Dock.Dispose);

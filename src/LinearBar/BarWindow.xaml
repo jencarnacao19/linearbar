@@ -29,17 +29,17 @@
 
         <!-- A notification-area icon. Mouse input is forwarded to the app that owns it. -->
         <DataTemplate x:Key="TrayIconTemplate">
-            <Border Width="26"
-                    Height="30"
-                    CornerRadius="5"
-                    ToolTip="{Binding Title}"
-                    MouseDown="OnTrayIconMouseDown"
-                    MouseUp="OnTrayIconMouseUp"
-                    MouseEnter="OnTrayIconMouseEnter"
-                    MouseLeave="OnTrayIconMouseLeave"
-                    MouseMove="OnTrayIconMouseMove">
-                <Border.Style>
-                    <Style TargetType="Border">
+            <visuals:SquircleBorder Width="28"
+                                    Height="32"
+                                    Radius="10"
+                                    ToolTip="{Binding Title}"
+                                    MouseDown="OnTrayIconMouseDown"
+                                    MouseUp="OnTrayIconMouseUp"
+                                    MouseEnter="OnTrayIconMouseEnter"
+                                    MouseLeave="OnTrayIconMouseLeave"
+                                    MouseMove="OnTrayIconMouseMove">
+                <visuals:SquircleBorder.Style>
+                    <Style TargetType="visuals:SquircleBorder">
                         <Setter Property="Background" Value="Transparent" />
                         <Style.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
@@ -47,12 +47,67 @@
                             </Trigger>
                         </Style.Triggers>
                     </Style>
-                </Border.Style>
+                </visuals:SquircleBorder.Style>
                 <Image Width="16"
                        Height="16"
                        Source="{Binding Icon}"
                        RenderOptions.BitmapScalingMode="HighQuality" />
-            </Border>
+            </visuals:SquircleBorder>
+        </DataTemplate>
+
+        <!-- A plugin widget: icon, text, gauges or a small graph. Everything is a squircle. -->
+        <DataTemplate x:Key="PluginTemplate">
+            <Button Style="{StaticResource BarButton}"
+                    Padding="8,0"
+                    Click="OnPluginClick"
+                    MouseRightButtonUp="OnPluginRightClick"
+                    ToolTip="{Binding Tooltip}"
+                    Visibility="{Binding IsVisible, Converter={StaticResource BoolToVisibility}}">
+                <StackPanel Orientation="Horizontal">
+                    <Grid VerticalAlignment="Center">
+                        <visuals:IconView Width="18"
+                                          Height="18"
+                                          Icon="{Binding Icon}"
+                                          Image="{Binding Image}"
+                                          Brush="{Binding Accent}" />
+                        <visuals:SquircleBorder Width="7"
+                                                Height="7"
+                                                Margin="0,-2,-3,0"
+                                                HorizontalAlignment="Right"
+                                                VerticalAlignment="Top"
+                                                Background="{StaticResource AttentionBrush}"
+                                                Radius="3.5"
+                                                Visibility="{Binding HasError, Converter={StaticResource BoolToVisibility}}" />
+                    </Grid>
+                    <StackPanel Margin="7,0,0,0" VerticalAlignment="Center">
+                        <TextBlock FontSize="12.5"
+                                   Text="{Binding Text}"
+                                   Visibility="{Binding HasText, Converter={StaticResource BoolToVisibility}}" />
+                        <ItemsControl Focusable="False"
+                                      ItemsSource="{Binding Bars}"
+                                      Visibility="{Binding HasBars, Converter={StaticResource BoolToVisibility}}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <visuals:PillGauge Width="48"
+                                                       Height="3.5"
+                                                       Margin="0,3,0,0"
+                                                       Value="{Binding Value}"
+                                                       Fill="{Binding Fill}" />
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                    <widgets:SparklineControl Width="34"
+                                              Height="18"
+                                              Margin="7,0,0,0"
+                                              VerticalAlignment="Center"
+                                              History="{Binding Graph}"
+                                              Maximum="{Binding GraphMaximum}"
+                                              Version="{Binding GraphVersion}"
+                                              Stroke="{Binding Accent}"
+                                              Visibility="{Binding HasGraph, Converter={StaticResource BoolToVisibility}}" />
+                </StackPanel>
+            </Button>
         </DataTemplate>
 
         <!-- A live graph: caption and value on top, sparkline below. -->
@@ -122,6 +177,7 @@
                                     HorizontalAlignment="Left"
                                     VerticalAlignment="Center"
                                     SizeChanged="OnSideGroupSizeChanged">
+                    <StackPanel Orientation="Horizontal">
                     <Button Style="{StaticResource BarButton}"
                             Width="{Binding StartButtonSize}"
                             Margin="0"
@@ -129,12 +185,13 @@
                             Command="{Binding StartCommand}"
                             MouseRightButtonUp="OnStartRightClick"
                             ToolTip="{x:Static local:Strings.Start}">
-                        <Path Width="16"
-                              Height="16"
-                              Data="M0,0 H7 V7 H0 Z M9,0 H16 V7 H9 Z M0,9 H7 V16 H0 Z M9,9 H16 V16 H9 Z"
-                              Fill="{StaticResource AccentBrush}"
-                              Stretch="Uniform" />
+                        <visuals:StartGlyph Width="18" Height="18" Fill="{StaticResource AccentBrush}" />
                     </Button>
+                    <ItemsControl Focusable="False"
+                                  ItemTemplate="{StaticResource PluginTemplate}"
+                                  ItemsPanel="{StaticResource HorizontalPanel}"
+                                  ItemsSource="{Binding Plugins.Left}" />
+                    </StackPanel>
                 </visuals:GlassPanel>
 
                 <!-- Right: graphs, battery, tray, clock. -->
@@ -147,6 +204,11 @@
                                     VerticalAlignment="Center"
                                     SizeChanged="OnSideGroupSizeChanged">
                 <StackPanel Orientation="Horizontal">
+
+                    <ItemsControl Focusable="False"
+                                  ItemTemplate="{StaticResource PluginTemplate}"
+                                  ItemsPanel="{StaticResource HorizontalPanel}"
+                                  ItemsSource="{Binding Plugins.Right}" />
 
                     <ItemsControl Focusable="False"
                                   ItemTemplate="{StaticResource MetricTemplate}"

@@ -21,12 +21,13 @@ internal sealed class BarViewModel : ObservableObject
     private bool _showTray;
     private bool _isTrayExpanded;
 
-    public BarViewModel(ShellManager shell, SettingsStore store, DockViewModel dock, MetricsViewModel metrics, ClockViewModel clock, Action exit)
+    public BarViewModel(ShellManager shell, SettingsStore store, DockViewModel dock, MetricsViewModel metrics, ClockViewModel clock, LinearBar.Plugins.PluginHost plugins, Action exit)
     {
         _store = store;
         Dock = dock;
         Metrics = metrics;
         Clock = clock;
+        Plugins = plugins;
 
         // Null when the tray service is switched off in the settings.
         PinnedTrayIcons = shell.NotificationArea?.PinnedIcons;
@@ -49,6 +50,9 @@ internal sealed class BarViewModel : ObservableObject
     public MetricsViewModel Metrics { get; }
 
     public ClockViewModel Clock { get; }
+
+    /// <summary>Plugin widgets for the left and right islands.</summary>
+    public LinearBar.Plugins.PluginHost Plugins { get; }
 
     public ICollectionView? PinnedTrayIcons { get; }
 
@@ -104,6 +108,7 @@ internal sealed class BarViewModel : ObservableObject
         Dock.ApplySettings();
         Metrics.ApplySettings(settings.Metrics);
         Clock.ApplySettings(settings.Clock);
+        Plugins.Apply(settings);
     }
 
     private void ApplyOwnSettings()

@@ -19,6 +19,10 @@ public sealed class GlassPanel : Decorator
         nameof(Shadow), typeof(bool), typeof(GlassPanel),
         new FrameworkPropertyMetadata(true, FrameworkPropertyMetadataOptions.AffectsRender));
 
+    public static readonly DependencyProperty SolidProperty = DependencyProperty.Register(
+        nameof(Solid), typeof(bool), typeof(GlassPanel),
+        new FrameworkPropertyMetadata(false, FrameworkPropertyMetadataOptions.AffectsRender));
+
     public GlassPanel()
     {
         Loaded += (_, _) => Glass.Changed += InvalidateVisual;
@@ -36,6 +40,13 @@ public sealed class GlassPanel : Decorator
     {
         get => (Thickness)GetValue(PaddingProperty);
         set => SetValue(PaddingProperty, value);
+    }
+
+    /// <summary>Opaque glass, for surfaces with no blur behind them (pop-ups, menus).</summary>
+    public bool Solid
+    {
+        get => (bool)GetValue(SolidProperty);
+        set => SetValue(SolidProperty, value);
     }
 
     public bool Shadow
@@ -73,6 +84,6 @@ public sealed class GlassPanel : Decorator
     {
         Size size = RenderSize;
         double radius = double.IsNaN(Radius) ? Math.Round(Math.Min(size.Width, size.Height) * 0.36) : Radius;
-        Glass.DrawSurface(drawingContext, new Rect(size), radius, Shadow);
+        Glass.DrawSurface(drawingContext, new Rect(size), radius, Shadow, Solid);
     }
 }

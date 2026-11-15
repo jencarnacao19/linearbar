@@ -44,6 +44,9 @@ public sealed record PluginManifest
 
     public PluginPlacement Placement { get; init; } = PluginPlacement.Right;
 
+    /// <summary>Whether the plugin runs when the settings do not mention it.</summary>
+    public bool EnabledByDefault { get; init; } = true;
+
     /// <summary>Declared capabilities ("network", "files", "processes"); shown to the user.</summary>
     public IReadOnlyList<string> Permissions { get; init; } = [];
 

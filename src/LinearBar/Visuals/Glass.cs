@@ -49,6 +49,7 @@ internal static class Glass
     private static readonly Color NeutralTile = Color.FromRgb(150, 156, 172);
 
     private static Brush _base = CreateBase(true, 0.5);
+    private static readonly Brush SolidBase = Freeze(new SolidColorBrush(Color.FromArgb(238, 26, 26, 32)));
 
     /// <summary>Corner smoothing of every squircle (0 = plain rounded corners).</summary>
     public static double Smoothing { get; private set; } = Squircle.AppleSmoothing;
@@ -73,7 +74,8 @@ internal static class Glass
     }
 
     /// <summary>Draws a glass island filling <paramref name="bounds"/>.</summary>
-    public static void DrawSurface(DrawingContext dc, Rect bounds, double radius, bool shadow = true)
+    /// <param name="solid">Opaque glass for pop-ups, which have no blur behind them.</param>
+    public static void DrawSurface(DrawingContext dc, Rect bounds, double radius, bool shadow = true, bool solid = false)
     {
         if (bounds.Width <= 1 || bounds.Height <= 1)
         {
@@ -91,7 +93,7 @@ internal static class Glass
         }
 
         Geometry shape = SquircleGeometry.Create(bounds, radius, Smoothing);
-        dc.DrawGeometry(_base, null, shape);
+        dc.DrawGeometry(solid ? SolidBase : _base, null, shape);
         dc.DrawGeometry(Wash, null, shape);
         dc.DrawGeometry(Sheen, null, shape);
 

@@ -1,0 +1,16 @@
+{
+  // Google Antigravity (agy) quota. Antigravity keeps no documented local usage file, so
+  // this asks the CLI itself ("agy -p /usage") every 10 minutes and reads the percentages.
+  "id": "agy",
+  "name": "Antigravity",
+  "description": "Quota do Antigravity CLI (5 h e semanal), via 'agy -p /usage'.",
+  "version": "0.1.0",
+  "run": "powershell -NoProfile -ExecutionPolicy Bypass -File agy.ps1",
+  "mode": "interval",
+  "intervalSeconds": 600,
+  "timeoutSeconds": 90,
+  "permissions": ["processes"],
+  "options": {
+    "command": "agy"
+  }
+}

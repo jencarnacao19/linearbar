@@ -29,6 +29,12 @@ public sealed class BarSettings
 
     public ClockSettings Clock { get; set; } = new();
 
+    /// <summary>
+    /// Per-plugin settings, keyed by plugin id. Plugins missing here use their defaults;
+    /// <c>"enabled": false</c> switches one off. Any other key is passed to the plugin.
+    /// </summary>
+    public Dictionary<string, PluginConfig> Plugins { get; set; } = [];
+
     /// <summary>Apps pinned to the dock, in display order.</summary>
     public List<PinnedApp> Pinned { get; set; } = [];
 
@@ -46,6 +52,11 @@ public sealed class BarSettings
         Metrics ??= new MetricsSettings();
         Clock ??= new ClockSettings();
         Pinned ??= [];
+        Plugins ??= [];
+        foreach (string key in Plugins.Where(p => p.Value is null).Select(p => p.Key).ToList())
+        {
+            Plugins[key] = new PluginConfig();
+        }
 
         BarHeight = ClampOrDefault(BarHeight, 40, 110, 64);
         BarOpacity = ClampOrDefault(BarOpacity, 0.2, 1, 0.5);
@@ -168,4 +179,31 @@ public sealed class PinnedApp
 
     /// <summary>Application User Model ID, for Store/UWP apps that have no executable to launch.</summary>
     public string? Aumid { get; set; }
+}
+
+/// <summary>Settings of one plugin.</summary>
+public sealed class PluginConfig
+{
+    public bool Enabled { get; set; } = true;
+
+    /// <summary>"left" or "right" island; null keeps the plugin's own choice.</summary>
+    public string? Placement { get; set; }
+
+    /// <summary>Plugin-specific options, e.g. <c>"city": "Lisboa"</c>.</summary>
+    [System.Text.Json.Serialization.JsonExtensionData]
+    public Dictionary<string, System.Text.Json.JsonElement> Options { get; set; } = [];
+
+    /// <summary>A string option, or null.</summary>
+    public string? GetString(string name) =>
+        Options.TryGetValue(name, out System.Text.Json.JsonElement value)
+            ? value.ValueKind == System.Text.Json.JsonValueKind.String ? value.GetString() : value.ToString()
+            : null;
+
+    /// <summary>A numeric option, or null.</summary>
+    public double? GetNumber(string name) =>
+        Options.TryGetValue(name, out System.Text.Json.JsonElement value)
+            && (value.ValueKind == System.Text.Json.JsonValueKind.Number ? value.TryGetDouble(out double n)
+                : double.TryParse(value.GetString(), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out n))
+            ? n
+            : null;
 }

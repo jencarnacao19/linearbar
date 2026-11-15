@@ -217,3 +217,25 @@ public sealed class SettingsStoreTests : IDisposable
         Assert.Equal(64, store.Current.BarHeight);
     }
 }
+
+public class PluginConfigTests
+{
+    [Fact]
+    public void Plugin_options_round_trip_through_the_settings_file()
+    {
+        BarSettings settings = SettingsStore.Deserialize("""
+            { "plugins": { "weather": { "city": "Porto", "latitude": 41.15, "enabled": true },
+                           "agy": { "enabled": false, "placement": "left" }, "x": null } }
+            """);
+
+        Assert.Equal("Porto", settings.Plugins["weather"].GetString("city"));
+        Assert.Equal(41.15, settings.Plugins["weather"].GetNumber("latitude"));
+        Assert.Null(settings.Plugins["weather"].GetNumber("missing"));
+        Assert.False(settings.Plugins["agy"].Enabled);
+        Assert.Equal("left", settings.Plugins["agy"].Placement);
+        Assert.True(settings.Plugins["x"].Enabled);
+
+        BarSettings again = SettingsStore.Deserialize(SettingsStore.Serialize(settings));
+        Assert.Equal("Porto", again.Plugins["weather"].GetString("city"));
+    }
+}

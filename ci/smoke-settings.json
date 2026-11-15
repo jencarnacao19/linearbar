@@ -6,6 +6,12 @@
   "metrics": {
     "intervalMs": 500
   },
+  "plugins": {
+    "ping": { "enabled": true },
+    "weather": { "city": "Lisboa" },
+    "claude": { "alwaysShow": "true" },
+    "codex": { "alwaysShow": "true" }
+  },
   "pinned": [
     { "path": "C:\\Windows\\explorer.exe" },
     { "path": "C:\\Windows\\System32\\cmd.exe" },

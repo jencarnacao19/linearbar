@@ -1,0 +1,17 @@
+{
+  // Example script plugin: network latency with a small graph. Copy this folder to
+  // %APPDATA%\LinearBar\plugins to start your own.
+  "id": "ping",
+  "name": "Latência",
+  "description": "Latência até um servidor, com gráfico.",
+  "version": "0.1.0",
+  "run": "powershell -NoProfile -ExecutionPolicy Bypass -File ping.ps1",
+  "mode": "interval",
+  "intervalSeconds": 10,
+  "timeoutSeconds": 8,
+  "permissions": ["network"],
+  "enabledByDefault": false,
+  "options": {
+    "host": "1.1.1.1"
+  }
+}

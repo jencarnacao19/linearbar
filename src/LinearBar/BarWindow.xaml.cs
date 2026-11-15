@@ -279,6 +279,49 @@ internal partial class BarWindow : AppBarWindow
         DockHost.SetInsets(left + DockSideGap, right + DockSideGap);
     }
 
+    // ---- Plugin widgets -----------------------------------------------------------------
+
+    private void OnPluginClick(object sender, RoutedEventArgs e)
+    {
+        if (sender is not FrameworkElement { DataContext: LinearBar.Plugins.PluginWidgetViewModel widget } element)
+        {
+            return;
+        }
+
+        switch (widget.ClickBehaviour())
+        {
+            case "panel":
+                LinearBar.Plugins.PluginPanelPopup.Show(widget, element);
+                break;
+            case "menu":
+                OpenPluginMenu(widget, element);
+                break;
+            case "action":
+                widget.Execute(widget.Output.Click!);
+                break;
+            default:
+                widget.Plugin.Refresh();
+                break;
+        }
+    }
+
+    private void OnPluginRightClick(object sender, MouseButtonEventArgs e)
+    {
+        if (sender is FrameworkElement { DataContext: LinearBar.Plugins.PluginWidgetViewModel widget } element)
+        {
+            e.Handled = true;
+            OpenPluginMenu(widget, element);
+        }
+    }
+
+    private static void OpenPluginMenu(LinearBar.Plugins.PluginWidgetViewModel widget, FrameworkElement anchor)
+    {
+        System.Windows.Controls.ContextMenu menu = LinearBar.Plugins.PluginPanelPopup.BuildMenu(widget);
+        menu.PlacementTarget = anchor;
+        menu.Placement = System.Windows.Controls.Primitives.PlacementMode.Top;
+        menu.IsOpen = true;
+    }
+
     // ---- Start button -------------------------------------------------------------------
 
     private void OnStartRightClick(object sender, MouseButtonEventArgs e)
