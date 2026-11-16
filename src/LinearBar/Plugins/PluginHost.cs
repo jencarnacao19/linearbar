@@ -18,7 +18,7 @@ namespace LinearBar.Plugins;
 internal sealed class PluginHost : IDisposable
 {
     /// <summary>Order of the widgets when nothing else decides it.</summary>
-    private static readonly string[] PreferredOrder = ["nowplaying", "weather", "claude", "codex", "agy"];
+    private static readonly string[] PreferredOrder = ["spotify", "nowplaying", "calendar", "weather", "github", "claude", "codex", "agy"];
 
     private readonly List<PluginWidgetViewModel> _widgets = [];
 
@@ -43,7 +43,7 @@ internal sealed class PluginHost : IDisposable
         LoadErrors.Clear();
 
         var plugins = new Dictionary<string, IPlugin>(StringComparer.Ordinal);
-        foreach (IPlugin plugin in CreateBuiltIns())
+        foreach (IPlugin plugin in CreateBuiltIns(settings))
         {
             plugins[plugin.Id] = plugin;
         }
@@ -108,9 +108,13 @@ internal sealed class PluginHost : IDisposable
 
     public void Dispose() => StopAll();
 
-    private static IEnumerable<IPlugin> CreateBuiltIns()
+    private static IEnumerable<IPlugin> CreateBuiltIns(BarSettings settings)
     {
-        yield return new NowPlayingPlugin();
+        bool spotifyWidget = settings.Plugins.GetValueOrDefault("spotify")?.Enabled ?? true;
+        yield return MediaPlugin.Spotify();
+        yield return MediaPlugin.NowPlaying(spotifyWidget);
+        yield return new CalendarPlugin();
+        yield return new GitHubPlugin();
         yield return new WeatherPlugin();
         yield return new ClaudeUsagePlugin();
         yield return new CodexUsagePlugin();

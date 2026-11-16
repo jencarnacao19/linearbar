@@ -93,6 +93,12 @@ public sealed record PluginRow
     public double? Progress { get; init; }
 
     public string? Color { get; init; }
+
+    /// <summary>URL, file or app opened when the row is clicked.</summary>
+    public string? Open { get; init; }
+
+    /// <summary>Plugin action run when the row is clicked.</summary>
+    public string? Action { get; init; }
 }
 
 /// <summary>Something a plugin lets the user do.</summary>

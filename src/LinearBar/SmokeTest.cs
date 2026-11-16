@@ -169,7 +169,7 @@ internal sealed class SmokeTest(ShellHost host, StartupOptions options, Action<i
                 + $"graph {(widget.Graph?.Count ?? 0)}, error {widget.Output.Error ?? "none"}");
         }
 
-        Check("built-in plugins are loaded", new[] { "nowplaying", "weather", "claude", "codex" }.All(id => plugins.Widgets.Any(w => w.Id == id)),
+        Check("built-in plugins are loaded", new[] { "spotify", "nowplaying", "calendar", "github", "weather", "claude", "codex" }.All(id => plugins.Widgets.Any(w => w.Id == id)),
             string.Join(", ", plugins.Widgets.Select(w => w.Id)));
         Check("bundled script plugins are discovered", plugins.Widgets.Any(w => w.Id == "agy") && plugins.LoadErrors.Count == 0,
             $"{plugins.LoadErrors.Count} load error(s)");

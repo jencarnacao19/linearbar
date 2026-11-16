@@ -234,7 +234,26 @@ internal sealed class PluginPanelPopup
             grid.Children.Add(gauge);
         }
 
-        return grid;
+        if (string.IsNullOrWhiteSpace(row.Open) && string.IsNullOrWhiteSpace(row.Action))
+        {
+            return grid;
+        }
+
+        // A clickable row: squircle highlight on hover, like a menu entry.
+        grid.Margin = new Thickness(0);
+        var chrome = new SquircleBorder { Radius = 10, Padding = new Thickness(6, 5, 6, 5), Margin = new Thickness(-6, 5, -6, 0), Child = grid, Cursor = System.Windows.Input.Cursors.Hand, Background = Brushes.Transparent };
+        Brush hover = (Brush)Application.Current.FindResource("HoverBrush");
+        chrome.MouseEnter += (_, _) => chrome.Background = hover;
+        chrome.MouseLeave += (_, _) => chrome.Background = Brushes.Transparent;
+        chrome.MouseLeftButtonUp += (_, _) =>
+        {
+            _widget.Execute(new PluginAction { Open = row.Open, Action = row.Action });
+            if (!string.IsNullOrWhiteSpace(row.Open))
+            {
+                _popup.IsOpen = false;
+            }
+        };
+        return chrome;
     }
 
     private UIElement Button(PluginAction action)
