@@ -28,9 +28,9 @@ New-Item -ItemType Directory -Force $Output | Out-Null
 $Output = (Resolve-Path $Output).Path
 
 $log = Join-Path $Output 'smoke.log'
-$settings = Join-Path $Output 'settings.json'
+$settingsCopy = Join-Path $Output 'settings.json'
 Remove-Item $log -ErrorAction SilentlyContinue
-Copy-Item $Settings $settings -Force
+Copy-Item $Settings $settingsCopy -Force
 
 $started = Get-Date
 
@@ -72,7 +72,7 @@ Start-Sleep -Seconds 4
 
 $startInfo = [System.Diagnostics.ProcessStartInfo]::new($Exe)
 $startInfo.UseShellExecute = $false
-foreach ($argument in '--smoke-test', '--settings', $settings, '--log', $log, '--screenshot', $Output) {
+foreach ($argument in '--smoke-test', '--settings', $settingsCopy, '--log', $log, '--screenshot', $Output) {
     $startInfo.ArgumentList.Add($argument)
 }
 
