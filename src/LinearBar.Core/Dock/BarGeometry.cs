@@ -25,8 +25,8 @@ public readonly record struct BarGeometry
     /// <summary>Room reserved above the tallest icon for its name label.</summary>
     public const double LabelSpace = 34;
 
-    /// <summary>Gap between the floating glass islands and the screen edges.</summary>
-    public const double IslandMargin = 5;
+    /// <summary>Default gap between the floating glass islands and the screen edges.</summary>
+    public const double DefaultIslandMargin = 5;
 
     /// <summary>Minimum room between the top of a resting icon and the top of the dock platter.</summary>
     public const double PlatterTopPadding = 5;
@@ -41,8 +41,17 @@ public readonly record struct BarGeometry
     public const double TileRadiusRatio = 0.2237;
 
     /// <summary>Largest icon that fits a bar of <paramref name="barHeight"/> with the platter padding.</summary>
-    public static double MaxIconSize(double barHeight) =>
-        barHeight - 2 * IslandMargin - PlatterTopPadding - PlatterBottomPadding - IndicatorSpace;
+    public static double MaxIconSize(double barHeight, double islandMargin = DefaultIslandMargin) =>
+        barHeight - 2 * islandMargin - PlatterTopPadding - PlatterBottomPadding - IndicatorSpace;
+
+    /// <summary>Gap between the islands and the screen edges.</summary>
+    public double IslandMargin { get; init; }
+
+    /// <summary>Island corner radius as a fraction of the island height.</summary>
+    public double Roundness { get; init; }
+
+    /// <summary>True when the bar is at the top of the screen and icons grow downwards.</summary>
+    public bool IsTop { get; init; }
 
     /// <summary>Height of the reserved bar area; the islands float inside it.</summary>
     public double BarHeight { get; init; }
@@ -63,7 +72,7 @@ public readonly record struct BarGeometry
     public double IslandHeight => BarHeight - 2 * IslandMargin;
 
     /// <summary>Corner radius of the islands.</summary>
-    public double IslandRadius => Math.Round(IslandHeight * 0.36);
+    public double IslandRadius => Math.Round(IslandHeight * Roundness);
 
     /// <summary>Peak scale of the lens (1 when magnification is off).</summary>
     public double MaxScale { get; init; }
@@ -85,10 +94,11 @@ public readonly record struct BarGeometry
         DockSettings dock = settings.Dock;
 
         double barHeight = settings.BarHeight;
-        double iconSize = Math.Min(dock.IconSize, Math.Max(16, MaxIconSize(barHeight)));
+        double margin = settings.Appearance.IslandMargin;
+        double iconSize = Math.Min(dock.IconSize, Math.Max(16, MaxIconSize(barHeight, margin)));
         double slotWidth = iconSize + dock.Spacing;
         double cellHeight = iconSize + IndicatorSpace;
-        double bottomMargin = IslandMargin + PlatterBottomPadding;
+        double bottomMargin = margin + PlatterBottomPadding;
         double maxScale = dock.Magnify ? Math.Max(1, dock.MaxScale) : 1;
 
         double tallestCell = cellHeight * maxScale + bottomMargin;
@@ -101,6 +111,9 @@ public readonly record struct BarGeometry
         return new BarGeometry
         {
             BarHeight = barHeight,
+            IslandMargin = margin,
+            Roundness = settings.Appearance.CornerRoundness,
+            IsTop = settings.Layout.IsTop,
             IconSize = iconSize,
             SlotWidth = slotWidth,
             CellHeight = cellHeight,

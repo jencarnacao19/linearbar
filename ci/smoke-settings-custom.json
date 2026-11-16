@@ -1,0 +1,29 @@
+{
+  // Second smoke run: a heavily customised bar (top edge, one continuous bar, dock on the
+  // left, pink accent, custom zones) to prove the layout engine and the top position.
+  "hideWindowsTaskbar": true,
+  "importedTaskbarPins": true,
+  "barHeight": 56,
+  "metrics": { "intervalMs": 500 },
+  "appearance": { "accent": "#FF6FAE", "glassColor": "#1E1030", "cornerRoundness": 0.5, "islandMargin": 8 },
+  "layout": {
+    "position": "top",
+    "style": "bar",
+    "left": ["start", "dock"],
+    "center": ["clock"],
+    "right": ["weather", "gap", "cpu", "memory", "tray"]
+  },
+  "plugins": {
+    "weather": { "city": "Porto" },
+    "claude": { "enabled": false },
+    "codex": { "enabled": false },
+    "github": { "enabled": false },
+    "calendar": { "enabled": false }
+  },
+  "pinned": [
+    { "path": "C:\\Windows\\explorer.exe" },
+    { "path": "C:\\Windows\\System32\\notepad.exe" },
+    { "path": "C:\\Windows\\System32\\mspaint.exe" },
+    { "path": "C:\\Windows\\System32\\taskmgr.exe" }
+  ]
+}

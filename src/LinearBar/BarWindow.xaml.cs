@@ -1,4 +1,6 @@
 using System.Windows;
+using System.Windows.Controls;
+using LinearBar.Core.Config;
 using System.Windows.Media;
 using System.Windows.Input;
 using LinearBar.Core.Dock;
@@ -45,6 +47,8 @@ internal partial class BarWindow : AppBarWindow
 
     private readonly ShellManager _shell;
     private readonly BarViewModel _viewModel;
+    private readonly List<GlassPanel> _islands = [];
+    private FrameworkElement? _dockSlot;
     private BackdropWindow? _backdrop;
     private MagnifyPanel? _observedPanel;
     private double _overflowHeight;
@@ -56,7 +60,7 @@ internal partial class BarWindow : AppBarWindow
             shell.ExplorerHelper,
             shell.FullScreenHelper,
             screen,
-            AppBarEdge.Bottom,
+            viewModel.Geometry.IsTop ? AppBarEdge.Top : AppBarEdge.Bottom,
             AppBarMode.Normal,
             viewModel.Geometry.BarHeight)
     {
@@ -70,9 +74,21 @@ internal partial class BarWindow : AppBarWindow
         InitializeComponent();
         DataContext = viewModel;
 
-        LayoutUpdated += (_, _) => UpdateBackdrop();
+        LayoutUpdated += (_, _) =>
+        {
+            UpdateDockSlot();
+            UpdateBackdrop();
+        };
         DockHost.LabelChanged += UpdateBackdrop;
+        viewModel.Dock.Items.CollectionChanged += (_, _) => UpdateDockSlot();
+        Loaded += (_, _) => BuildLayout();
     }
+
+    /// <summary>True when the bar sits at the top of the screen.</summary>
+    public bool IsTop => AppBarEdge == AppBarEdge.Top;
+
+    /// <summary>The glass islands built from the layout, for diagnostics.</summary>
+    public IReadOnlyList<GlassPanel> Islands => _islands;
 
     /// <summary>
     /// The window that blurs what is behind the glass islands, or null for no blur.
@@ -112,7 +128,7 @@ internal partial class BarWindow : AppBarWindow
     {
         if (msg == WM_WINDOWPOSCHANGING)
         {
-            ExtendIntoOverflow(lParam);
+            ExtendIntoOverflow(lParam, IsTop);
         }
 
         IntPtr result = base.WndProc(hwnd, msg, wParam, lParam, ref handled);
@@ -131,7 +147,7 @@ internal partial class BarWindow : AppBarWindow
     /// Only requests whose height is exactly the reserved height are touched, which makes
     /// this idempotent: a request that already includes the overflow is left alone.
     /// </summary>
-    private void ExtendIntoOverflow(IntPtr lParam)
+    private void ExtendIntoOverflow(IntPtr lParam, bool downwards)
     {
         int overflow = OverflowPixels;
         if (overflow <= 0)
@@ -150,7 +166,12 @@ internal partial class BarWindow : AppBarWindow
             return;
         }
 
-        position.y -= overflow;
+        // At the bottom the band goes above the bar; at the top, below it.
+        if (!downwards)
+        {
+            position.y -= overflow;
+        }
+
         position.cy += overflow;
         position.UpdateMessage(lParam);
     }
@@ -167,7 +188,10 @@ internal partial class BarWindow : AppBarWindow
             return;
         }
 
-        var reserved = new Rect(window.Left, window.Bottom - Math.Min(window.Height, ReservedPixels), window.Right, window.Bottom);
+        int reservedHeight = Math.Min(window.Height, ReservedPixels);
+        var reserved = IsTop
+            ? new Rect(window.Left, window.Top, window.Right, window.Top + reservedHeight)
+            : new Rect(window.Left, window.Bottom - reservedHeight, window.Right, window.Bottom);
         if (reserved.Left == _reservedRect.Left && reserved.Top == _reservedRect.Top
             && reserved.Right == _reservedRect.Right && reserved.Bottom == _reservedRect.Bottom)
         {
@@ -175,7 +199,7 @@ internal partial class BarWindow : AppBarWindow
         }
 
         _reservedRect = reserved;
-        _shell.NotificationArea?.SetTrayHostSizeData(new TrayHostSizeData { edge = ABEdge.ABE_BOTTOM, rc = reserved });
+        _shell.NotificationArea?.SetTrayHostSizeData(new TrayHostSizeData { edge = IsTop ? ABEdge.ABE_TOP : ABEdge.ABE_BOTTOM, rc = reserved });
         Log.Debug($"Bar placed: window {window.Left},{window.Top} {window.Width}x{window.Height}; reserved top {reserved.Top}.");
     }
 
@@ -221,10 +245,20 @@ internal partial class BarWindow : AppBarWindow
         var shapes = new List<(System.Windows.Rect Bounds, double Radius)>(4);
         double islandRadius = _viewModel.IslandRadius;
 
-        AddShape(shapes, BoundsOf(LeftGroup), islandRadius, dpi);
-        AddShape(shapes, BoundsOf(RightGroup), islandRadius, dpi);
+        if (ContinuousGlass.IsVisible)
+        {
+            AddShape(shapes, BoundsOf(ContinuousGlass), 0, dpi);
+        }
 
-        if (_observedPanel is { } dock && !dock.PlatterBounds.IsEmpty)
+        foreach (GlassPanel island in _islands)
+        {
+            if (!island.Plain)
+            {
+                AddShape(shapes, BoundsOf(island), islandRadius, dpi);
+            }
+        }
+
+        if (_observedPanel is { ShowPlatter: true } dock && !dock.PlatterBounds.IsEmpty)
         {
             AddShape(shapes, Transform(dock, dock.PlatterBounds), islandRadius, dpi);
         }
@@ -270,14 +304,163 @@ internal partial class BarWindow : AppBarWindow
 
     // ---- Layout -------------------------------------------------------------------------
 
-    /// <summary>Keeps the dock clear of the widget groups, whatever their width.</summary>
-    private void OnSideGroupSizeChanged(object sender, SizeChangedEventArgs e)
+    /// <summary>
+    /// Fills the zones from the layout settings: runs of widgets become glass islands, "gap"
+    /// starts a new island, and "dock" becomes a placeholder the dock is aligned to.
+    /// </summary>
+    public void BuildLayout()
     {
-        double left = LeftGroup.ActualWidth + LeftGroup.Margin.Left;
-        double right = RightGroup.ActualWidth + RightGroup.Margin.Right;
+        LayoutSettings layout = _viewModel.Layout;
+        double margin = Math.Max(0, _viewModel.Geometry.IslandMargin);
+        bool continuous = layout.IsContinuous;
 
-        DockHost.SetInsets(left + DockSideGap, right + DockSideGap);
+        Strip.VerticalAlignment = IsTop ? VerticalAlignment.Top : VerticalAlignment.Bottom;
+        ContinuousGlass.Visibility = continuous ? Visibility.Visible : Visibility.Collapsed;
+        _islands.Clear();
+        _dockSlot = null;
+
+        // Plugins the layout does not mention go to their own default side, so newly
+        // installed script plugins show up without editing the layout.
+        var mentioned = new HashSet<string>(layout.Left.Concat(layout.Center).Concat(layout.Right), StringComparer.Ordinal);
+        List<string> left = [.. layout.Left];
+        List<string> right = [.. layout.Right];
+        foreach (LinearBar.Plugins.PluginWidgetViewModel widget in _viewModel.Plugins.Widgets.Where(w => !mentioned.Contains(w.Id)))
+        {
+            if (widget.Placement == LinearBar.Core.Plugins.PluginPlacement.Left)
+            {
+                left.Add(widget.Id);
+            }
+            else
+            {
+                right.Insert(0, widget.Id);
+            }
+        }
+
+        Fill(LeftZone, left, margin, continuous);
+        Fill(CenterZone, layout.Center, margin, continuous);
+        Fill(RightZone, right, margin, continuous);
+
+        LeftZone.Margin = new Thickness(continuous ? 4 : margin, 0, 0, 0);
+        RightZone.Margin = new Thickness(0, 0, continuous ? 4 : margin, 0);
+        DockHost.Visibility = _dockSlot is null ? Visibility.Collapsed : Visibility.Visible;
+        UpdateDockSlot();
     }
+
+    private void Fill(StackPanel zone, IReadOnlyList<string> items, double margin, bool continuous)
+    {
+        zone.Children.Clear();
+        StackPanel? run = null;
+
+        foreach (string id in items)
+        {
+            if (id == "gap")
+            {
+                run = null;
+                continue;
+            }
+
+            if (id == "dock")
+            {
+                run = null;
+                _dockSlot = new Border { Height = _viewModel.IslandHeight, Margin = new Thickness(zone.Children.Count > 0 ? margin : 0, 0, 0, 0) };
+                zone.Children.Add(_dockSlot);
+                continue;
+            }
+
+            if (CreateItem(id) is not { } element)
+            {
+                continue;
+            }
+
+            if (run is null)
+            {
+                run = new StackPanel { Orientation = Orientation.Horizontal };
+                var island = new GlassPanel
+                {
+                    Height = _viewModel.IslandHeight,
+                    Radius = _viewModel.IslandRadius,
+                    Padding = new Thickness(3),
+                    Plain = continuous,
+                    Margin = new Thickness(zone.Children.Count > 0 ? Math.Max(4, margin) : 0, 0, 0, 0),
+                    Child = run,
+                };
+                _islands.Add(island);
+                zone.Children.Add(island);
+            }
+
+            run.Children.Add(element);
+        }
+    }
+
+    private FrameworkElement? CreateItem(string id)
+    {
+        (object? content, string? template) = id switch
+        {
+            "start" => ((object?)_viewModel, "StartTemplate"),
+            "battery" => (_viewModel, "BatteryTemplate"),
+            "tray" => (_viewModel, "TrayTemplate"),
+            "clock" => (_viewModel, "ClockTemplate"),
+            "cpu" or "memory" or "network" => (_viewModel.Metrics.Items.FirstOrDefault(m => m.Key == id), "MetricTemplate"),
+            _ => (_viewModel.Plugins.Widgets.FirstOrDefault(w => w.Id == id), "PluginTemplate"),
+        };
+
+        if (content is null)
+        {
+            return null;
+        }
+
+        return new ContentControl
+        {
+            Content = content,
+            ContentTemplate = (DataTemplate)FindResource(template),
+            Focusable = false,
+            VerticalAlignment = VerticalAlignment.Center,
+        };
+    }
+
+    /// <summary>
+    /// Sizes the dock placeholder (the dock's natural width, or whatever space is left) and
+    /// tells the dock to fit exactly into it.
+    /// </summary>
+    private void UpdateDockSlot()
+    {
+        if (_dockSlot is null || ActualWidth <= 0)
+        {
+            return;
+        }
+
+        DockViewModel dock = _viewModel.Dock;
+        double lensMargin = new LinearBar.Core.Dock.Lens(dock.MaxScale - 1, dock.LensRadius).MaxDisplacement;
+        double pad = LinearBar.Core.Dock.BarGeometry.PlatterSidePadding;
+        double natural = dock.Items.Count * dock.SlotWidth + 2 * (lensMargin + pad);
+
+        double others = 0;
+        foreach (StackPanel zone in new[] { LeftZone, CenterZone, RightZone })
+        {
+            others += zone.Margin.Left + zone.Margin.Right;
+            foreach (FrameworkElement child in zone.Children)
+            {
+                others += child.Margin.Left + child.Margin.Right + (ReferenceEquals(child, _dockSlot) ? 0 : child.ActualWidth);
+            }
+        }
+
+        double width = Math.Max(0, Math.Min(natural, ActualWidth - others - 8));
+        if (Math.Abs(_dockSlot.Width - width) > 0.5 || double.IsNaN(_dockSlot.Width))
+        {
+            _dockSlot.Width = width;
+            return; // the next layout pass positions it
+        }
+
+        if (Transform(_dockSlot, new System.Windows.Rect(_dockSlot.RenderSize)) is { } slot)
+        {
+            DockHost.SetInsets(slot.Left + pad, Math.Max(0, ActualWidth - slot.Right) + pad);
+        }
+    }
+
+    private void OnCustomizeClick(object sender, RoutedEventArgs e) => CustomizeRequested?.Invoke();
+
+    /// <summary>Raised when the user asks to customise the bar.</summary>
+    public event Action? CustomizeRequested;
 
     // ---- Plugin widgets -----------------------------------------------------------------
 
@@ -318,7 +501,7 @@ internal partial class BarWindow : AppBarWindow
     {
         System.Windows.Controls.ContextMenu menu = LinearBar.Plugins.PluginPanelPopup.BuildMenu(widget);
         menu.PlacementTarget = anchor;
-        menu.Placement = System.Windows.Controls.Primitives.PlacementMode.Top;
+        menu.Placement = PopupPlacement.Menu;
         menu.IsOpen = true;
     }
 

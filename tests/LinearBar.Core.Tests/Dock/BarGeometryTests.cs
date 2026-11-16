@@ -55,7 +55,7 @@ public class BarGeometryTests
 
             BarGeometry geometry = BarGeometry.From(settings);
 
-            double platterTop = geometry.BarHeight - BarGeometry.IslandMargin;
+            double platterTop = geometry.BarHeight - BarGeometry.DefaultIslandMargin;
             Assert.True(geometry.CellBottomMargin + geometry.CellHeight + BarGeometry.PlatterTopPadding <= platterTop + 1e-9, $"bar {barHeight}");
         }
     }

@@ -103,7 +103,9 @@ internal partial class DockView : UserControl
 
         double x = hover.CenterX - size.Width / 2;
         x = Math.Clamp(x, 4, Math.Max(4, ActualWidth - size.Width - 4));
-        double y = Math.Max(0, hover.Top - LabelGap - size.Height);
+        double y = dock.IsTop
+            ? Math.Min(Math.Max(0, ActualHeight - size.Height), hover.Top + LabelGap)
+            : Math.Max(0, hover.Top - LabelGap - size.Height);
 
         LabelOffset.X = Math.Round(x);
         LabelOffset.Y = Math.Round(y);

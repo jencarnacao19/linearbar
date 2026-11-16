@@ -10,7 +10,8 @@ public static class Strings
 
     // Bar context menu
     public const string TaskManager = "Gestor de Tarefas";
-    public const string OpenSettings = "Definições do LinearBar…";
+    public const string Customize = "Personalizar a barra…";
+    public const string OpenSettings = "Abrir ficheiro de definições";
     public const string OpenLog = "Abrir registo (log)";
     public const string Exit = "Sair do LinearBar";
 

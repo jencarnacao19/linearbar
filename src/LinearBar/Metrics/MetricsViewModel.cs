@@ -69,9 +69,9 @@ internal sealed class MetricsViewModel : ObservableObject, IDisposable
         Stop();
 
         int length = settings.HistoryLength;
-        _cpu = Reuse(_cpu, settings.Enabled && settings.ShowCpu, length, () => new MetricItem(Strings.Cpu, 58, 100, length, Palette.Cpu));
-        _memory = Reuse(_memory, settings.Enabled && settings.ShowMemory, length, () => new MetricItem(Strings.Memory, 58, 100, length, Palette.Memory));
-        _network = Reuse(_network, settings.Enabled && settings.ShowNetwork, length, () => new MetricItem(Strings.Network, 92, MinimumNetworkScale, length, Palette.NetworkDown, Palette.NetworkUp));
+        _cpu = Reuse(_cpu, settings.Enabled && settings.ShowCpu, length, () => new MetricItem("cpu", Strings.Cpu, 58, 100, length, Palette.Cpu));
+        _memory = Reuse(_memory, settings.Enabled && settings.ShowMemory, length, () => new MetricItem("memory", Strings.Memory, 58, 100, length, Palette.Memory));
+        _network = Reuse(_network, settings.Enabled && settings.ShowNetwork, length, () => new MetricItem("network", Strings.Network, 92, MinimumNetworkScale, length, Palette.NetworkDown, Palette.NetworkUp));
 
         Items.Clear();
         foreach (MetricItem? item in new[] { _cpu, _memory, _network })

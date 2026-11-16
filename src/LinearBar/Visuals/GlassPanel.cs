@@ -23,6 +23,10 @@ public sealed class GlassPanel : Decorator
         nameof(Solid), typeof(bool), typeof(GlassPanel),
         new FrameworkPropertyMetadata(false, FrameworkPropertyMetadataOptions.AffectsRender));
 
+    public static readonly DependencyProperty PlainProperty = DependencyProperty.Register(
+        nameof(Plain), typeof(bool), typeof(GlassPanel),
+        new FrameworkPropertyMetadata(false, FrameworkPropertyMetadataOptions.AffectsRender));
+
     public GlassPanel()
     {
         Loaded += (_, _) => Glass.Changed += InvalidateVisual;
@@ -40,6 +44,13 @@ public sealed class GlassPanel : Decorator
     {
         get => (Thickness)GetValue(PaddingProperty);
         set => SetValue(PaddingProperty, value);
+    }
+
+    /// <summary>No glass at all: just a layout container (used inside the continuous bar).</summary>
+    public bool Plain
+    {
+        get => (bool)GetValue(PlainProperty);
+        set => SetValue(PlainProperty, value);
     }
 
     /// <summary>Opaque glass, for surfaces with no blur behind them (pop-ups, menus).</summary>
@@ -82,6 +93,11 @@ public sealed class GlassPanel : Decorator
 
     protected override void OnRender(DrawingContext drawingContext)
     {
+        if (Plain)
+        {
+            return;
+        }
+
         Size size = RenderSize;
         double radius = double.IsNaN(Radius) ? Math.Round(Math.Min(size.Width, size.Height) * 0.36) : Radius;
         Glass.DrawSurface(drawingContext, new Rect(size), radius, Shadow, Solid);

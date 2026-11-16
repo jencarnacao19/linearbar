@@ -91,7 +91,9 @@ internal sealed class PluginPanelPopup
     }
 
     private static CustomPopupPlacement[] PlaceAbove(Size popupSize, Size targetSize, Point offset) =>
-        [new CustomPopupPlacement(new Point((targetSize.Width - popupSize.Width) / 2, -popupSize.Height - 2), PopupPrimaryAxis.Horizontal)];
+        [new CustomPopupPlacement(
+            new Point((targetSize.Width - popupSize.Width) / 2, PopupPlacement.BarAtTop ? targetSize.Height + 2 : -popupSize.Height - 2),
+            PopupPrimaryAxis.Horizontal)];
 
     private void OnWidgetChanged(object? sender, PropertyChangedEventArgs e) => Build();
 

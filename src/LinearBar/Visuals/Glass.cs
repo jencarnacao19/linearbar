@@ -45,7 +45,7 @@ internal static class Glass
             (1, Color.FromArgb(70, 255, 255, 255)))),
         1));
 
-    private static readonly Color DarkTint = Color.FromRgb(16, 16, 22);
+    private static Color _tint = Color.FromRgb(16, 16, 22);
     private static readonly Color NeutralTile = Color.FromRgb(150, 156, 172);
 
     private static Brush _base = CreateBase(true, 0.5);
@@ -64,10 +64,11 @@ internal static class Glass
     /// <param name="blurBehind">Whether the backdrop blur is active.</param>
     /// <param name="tintStrength">0.2–1: how dark and opaque the glass is.</param>
     /// <param name="smoothing">Squircle corner smoothing.</param>
-    public static void Configure(bool blurBehind, double tintStrength, double smoothing)
+    public static void Configure(bool blurBehind, double tintStrength, double smoothing, Color? tint = null)
     {
         BlurBehind = blurBehind;
         Smoothing = smoothing;
+        _tint = tint ?? _tint;
         _base = CreateBase(blurBehind, tintStrength);
         SquircleGeometry.ClearCache();
         Changed?.Invoke();
@@ -125,7 +126,7 @@ internal static class Glass
     {
         // Over a real blur the tint can be light; without it, it must hide what is behind.
         double alpha = blurBehind ? 0.25 + 0.55 * tintStrength : 0.62 + 0.33 * tintStrength;
-        return Freeze(new SolidColorBrush(Color.FromArgb((byte)Math.Round(255 * Math.Clamp(alpha, 0, 1)), DarkTint.R, DarkTint.G, DarkTint.B)));
+        return Freeze(new SolidColorBrush(Color.FromArgb((byte)Math.Round(255 * Math.Clamp(alpha, 0, 1)), _tint.R, _tint.G, _tint.B)));
     }
 
     private static LinearGradientBrush Vertical(params (double Offset, Color Color)[] stops)

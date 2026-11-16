@@ -46,6 +46,14 @@ internal sealed class MagnifyPanel : Panel
     public static readonly DependencyProperty BottomMarginProperty = Register(nameof(BottomMargin), 2.0);
     public static readonly DependencyProperty MaxScaleProperty = Register(nameof(MaxScale), 1.75);
     public static readonly DependencyProperty LensRadiusProperty = Register(nameof(LensRadius), 120.0);
+    public static readonly DependencyProperty DownwardProperty = DependencyProperty.Register(
+        nameof(Downward), typeof(bool), typeof(MagnifyPanel),
+        new FrameworkPropertyMetadata(false, FrameworkPropertyMetadataOptions.AffectsArrange | FrameworkPropertyMetadataOptions.AffectsRender));
+
+    public static readonly DependencyProperty ShowPlatterProperty = DependencyProperty.Register(
+        nameof(ShowPlatter), typeof(bool), typeof(MagnifyPanel),
+        new FrameworkPropertyMetadata(true, FrameworkPropertyMetadataOptions.AffectsRender));
+
     public static readonly DependencyProperty PlatterHeightProperty = Register(nameof(PlatterHeight), 54.0);
     public static readonly DependencyProperty PlatterBottomProperty = Register(nameof(PlatterBottom), 5.0);
     public static readonly DependencyProperty PlatterRadiusProperty = Register(nameof(PlatterRadius), 19.0);
@@ -119,6 +127,23 @@ internal sealed class MagnifyPanel : Panel
     {
         get => (double)GetValue(LensRadiusProperty);
         set => SetValue(LensRadiusProperty, value);
+    }
+
+    /// <summary>
+    /// True when the bar is at the top of the screen: cells hang from the top edge and grow
+    /// downwards. "BottomMargin" and "PlatterBottom" then measure from the top.
+    /// </summary>
+    public bool Downward
+    {
+        get => (bool)GetValue(DownwardProperty);
+        set => SetValue(DownwardProperty, value);
+    }
+
+    /// <summary>Draw the glass platter (off inside the continuous bar, which has its own glass).</summary>
+    public bool ShowPlatter
+    {
+        get => (bool)GetValue(ShowPlatterProperty);
+        set => SetValue(ShowPlatterProperty, value);
     }
 
     /// <summary>Height of the glass platter the icons rest on.</summary>
@@ -227,7 +252,8 @@ internal sealed class MagnifyPanel : Panel
         var lens = new Lens(fullMagnification * _amount.Value, LensRadius * _fit);
         DockLayout.Arrange(_slots, _origin, slot, _cursor, lens);
 
-        double top = finalSize.Height - BottomMargin - cellHeight;
+        bool downward = Downward;
+        double top = downward ? BottomMargin : finalSize.Height - BottomMargin - cellHeight;
         for (int i = 0; i < count; i++)
         {
             UIElement child = InternalChildren[i];
@@ -238,7 +264,7 @@ internal sealed class MagnifyPanel : Panel
             // Scale around the bottom-centre of the cell, then slide it to its lens position.
             double scale = _fit * _slots[i].Scale;
             Matrix matrix = Matrix.Identity;
-            matrix.ScaleAt(scale, scale, slotWidth / 2, cellHeight);
+            matrix.ScaleAt(scale, scale, slotWidth / 2, downward ? 0 : cellHeight);
             matrix.Translate(_slots[i].Center - restCenter, 0);
 
             if (child.RenderTransform is MatrixTransform { IsFrozen: false } transform)
@@ -273,18 +299,32 @@ internal sealed class MagnifyPanel : Panel
         (double left, double right) = DockLayout.Extent(count, _origin, slot, _cursor, lens);
 
         double pad = BarGeometry.PlatterSidePadding;
-        double platterTop = RenderSize.Height - PlatterBottom - PlatterHeight;
+        bool downward = Downward;
+        double platterTop = downward ? PlatterBottom : RenderSize.Height - PlatterBottom - PlatterHeight;
         var platter = new Rect(Math.Round(left - pad), Math.Round(platterTop), Math.Round(right - left + 2 * pad), PlatterHeight);
-        Glass.DrawSurface(drawingContext, platter, PlatterRadius);
-        SetPlatter(platter);
-
-        // The hit plate above the platter: see the class remarks. As tall as the tallest
-        // cell can currently be.
-        double height = Math.Min(RenderSize.Height, BottomMargin + CellHeight * _fit * (1 + magnification));
-        double above = RenderSize.Height - height;
-        if (right > left && above < platterTop)
+        if (ShowPlatter)
         {
-            drawingContext.DrawRectangle(HitPlateBrush, null, new Rect(left, above, right - left, platterTop - above));
+            Glass.DrawSurface(drawingContext, platter, PlatterRadius);
+            SetPlatter(platter);
+        }
+        else
+        {
+            SetPlatter(Rect.Empty);
+            drawingContext.DrawRectangle(HitPlateBrush, null, platter);
+        }
+
+        // The hit plate beyond the platter (above it, or below when the bar is at the top):
+        // see the class remarks. As far as the tallest cell can currently reach.
+        double reach = Math.Min(RenderSize.Height, BottomMargin + CellHeight * _fit * (1 + magnification));
+        if (right > left)
+        {
+            Rect plate = downward
+                ? new Rect(left, platter.Bottom, right - left, Math.Max(0, reach - platter.Bottom))
+                : new Rect(left, RenderSize.Height - reach, right - left, Math.Max(0, platterTop - (RenderSize.Height - reach)));
+            if (plate.Height > 0)
+            {
+                drawingContext.DrawRectangle(HitPlateBrush, null, plate);
+            }
         }
     }
 
@@ -415,11 +455,15 @@ internal sealed class MagnifyPanel : Panel
         int index = _hovering ? DockLayout.HitTest(count, _origin, slot, _cursor) : -1;
 
         // Reported to listeners once the layout pass is over; see the constructor.
+        // The label goes beyond the far edge of the hovered cell: above it, or below it when
+        // the bar is at the top.
         _hover = index < 0
             ? new DockHover(-1, 0, 0)
             : new DockHover(
                 index,
                 _slots[index].Center,
-                finalSize.Height - BottomMargin - cellHeight * _fit * _slots[index].Scale);
+                Downward
+                    ? BottomMargin + cellHeight * _fit * _slots[index].Scale
+                    : finalSize.Height - BottomMargin - cellHeight * _fit * _slots[index].Scale);
     }
 }

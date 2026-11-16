@@ -23,6 +23,9 @@ public sealed class BarSettings
 
     public AppearanceSettings Appearance { get; set; } = new();
 
+    /// <summary>What goes where in the bar, and the bar's position and style.</summary>
+    public LayoutSettings Layout { get; set; } = new();
+
     public DockSettings Dock { get; set; } = new();
 
     public MetricsSettings Metrics { get; set; } = new();
@@ -49,6 +52,8 @@ public sealed class BarSettings
     {
         Dock ??= new DockSettings();
         Appearance ??= new AppearanceSettings();
+        Layout ??= new LayoutSettings();
+        Layout.Normalize();
         Metrics ??= new MetricsSettings();
         Clock ??= new ClockSettings();
         Pinned ??= [];
@@ -61,8 +66,17 @@ public sealed class BarSettings
         BarHeight = ClampOrDefault(BarHeight, 40, 110, 64);
         BarOpacity = ClampOrDefault(BarOpacity, 0.2, 1, 0.5);
         Appearance.CornerSmoothing = ClampOrDefault(Appearance.CornerSmoothing, 0, 1, 0.6);
+        Appearance.CornerRoundness = ClampOrDefault(Appearance.CornerRoundness, 0, 0.5, 0.36);
+        Appearance.IslandMargin = ClampOrDefault(Appearance.IslandMargin, 0, 16, 5);
+        Appearance.Accent = ValidColor(Appearance.Accent, "#5AA9FF", allowSystem: true);
+        Appearance.GlassColor = ValidColor(Appearance.GlassColor, "#101016");
+        Appearance.TextColor = ValidColor(Appearance.TextColor, "#F2F2F5");
+        if (string.IsNullOrWhiteSpace(Appearance.FontFamily))
+        {
+            Appearance.FontFamily = "Segoe UI Variable Text, Segoe UI";
+        }
 
-        double maxIcon = Math.Max(16, LinearBar.Core.Dock.BarGeometry.MaxIconSize(BarHeight));
+        double maxIcon = Math.Max(16, LinearBar.Core.Dock.BarGeometry.MaxIconSize(BarHeight, Appearance.IslandMargin));
         Dock.IconSize = ClampOrDefault(Dock.IconSize, 16, maxIcon, Math.Min(40, maxIcon));
         Dock.Spacing = ClampOrDefault(Dock.Spacing, 0, 32, 8);
         Dock.MaxScale = ClampOrDefault(Dock.MaxScale, 1, 3, 1.75);
@@ -84,6 +98,19 @@ public sealed class BarSettings
         // Drop unusable pins and duplicates (same app pinned twice).
         var seen = new HashSet<string>(StringComparer.Ordinal);
         Pinned.RemoveAll(pin => pin is null || AppKey.ForPinned(pin) is not { } key || !seen.Add(key));
+    }
+
+    /// <summary>Accepts "#RGB", "#RRGGBB" or "#AARRGGBB" (and "system" where allowed).</summary>
+    internal static string ValidColor(string? value, string fallback, bool allowSystem = false)
+    {
+        string text = (value ?? string.Empty).Trim();
+        if (allowSystem && text.Equals("system", StringComparison.OrdinalIgnoreCase))
+        {
+            return "system";
+        }
+
+        bool hex = text.Length is 4 or 7 or 9 && text[0] == '#' && text.Skip(1).All(Uri.IsHexDigit);
+        return hex ? text.ToUpperInvariant() : fallback;
     }
 
     private static double ClampOrDefault(double value, double min, double max, double fallback)
@@ -123,6 +150,93 @@ public sealed class AppearanceSettings
 
     /// <summary>Corner smoothing of the squircles: 0 = ordinary rounded corners, 1 = smoothest.</summary>
     public double CornerSmoothing { get; set; } = 0.6;
+
+    /// <summary>
+    /// Corner radius of the islands as a fraction of their height: 0 = square, 0.5 = pill.
+    /// </summary>
+    public double CornerRoundness { get; set; } = 0.36;
+
+    /// <summary>Gap between the islands and the screen edges, in pixels.</summary>
+    public double IslandMargin { get; set; } = 5;
+
+    /// <summary>Accent colour as "#RRGGBB", or "system" for the Windows accent colour.</summary>
+    public string Accent { get; set; } = "#5AA9FF";
+
+    /// <summary>Colour the glass is tinted with, "#RRGGBB".</summary>
+    public string GlassColor { get; set; } = "#101016";
+
+    /// <summary>Main text colour, "#RRGGBB".</summary>
+    public string TextColor { get; set; } = "#F2F2F5";
+
+    /// <summary>Font family for all text in the bar.</summary>
+    public string FontFamily { get; set; } = "Segoe UI Variable Text, Segoe UI";
+}
+
+/// <summary>Where things are in the bar.</summary>
+public sealed class LayoutSettings
+{
+    /// <summary>Widgets that can be placed in the zones, besides plugin ids.</summary>
+    public static readonly IReadOnlyList<string> CoreItems = ["start", "dock", "cpu", "memory", "network", "battery", "tray", "clock", "gap"];
+
+    /// <summary>"bottom" or "top" edge of the screen.</summary>
+    public string Position { get; set; } = "bottom";
+
+    /// <summary>"islands": floating glass islands; "bar": one continuous glass bar.</summary>
+    public string Style { get; set; } = "islands";
+
+    /// <summary>Items in the left zone, in order. "gap" starts a new island.</summary>
+    public List<string> Left { get; set; } = ["start", "spotify", "nowplaying"];
+
+    /// <summary>Items in the centre zone (by default just the dock).</summary>
+    public List<string> Center { get; set; } = ["dock"];
+
+    /// <summary>Items in the right zone.</summary>
+    public List<string> Right { get; set; } = ["calendar", "weather", "github", "claude", "codex", "agy", "ping", "cpu", "memory", "network", "battery", "tray", "clock"];
+
+    public bool IsTop => Position == "top";
+
+    public bool IsContinuous => Style == "bar";
+
+    /// <summary>All three zones, left to right.</summary>
+    public IEnumerable<(string Name, List<string> Items)> Zones()
+    {
+        yield return ("left", Left);
+        yield return ("center", Center);
+        yield return ("right", Right);
+    }
+
+    /// <summary>Validates positions and style, and makes every item appear at most once.</summary>
+    public void Normalize()
+    {
+        Position = Position?.Trim().ToLowerInvariant() == "top" ? "top" : "bottom";
+        Style = Style?.Trim().ToLowerInvariant() == "bar" ? "bar" : "islands";
+        Left ??= [];
+        Center ??= [];
+        Right ??= [];
+
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+        foreach (List<string> zone in new[] { Left, Center, Right })
+        {
+            for (int i = 0; i < zone.Count; i++)
+            {
+                string item = (zone[i] ?? string.Empty).Trim().ToLowerInvariant();
+                zone[i] = item;
+            }
+
+            // "gap" may repeat; everything else appears once, in its first zone.
+            zone.RemoveAll(item => item.Length == 0 || (item != "gap" && !seen.Add(item)));
+
+            // No leading, trailing or doubled gaps.
+            for (int i = zone.Count - 1; i >= 0; i--)
+            {
+                bool gap = zone[i] == "gap";
+                if (gap && (i == 0 || i == zone.Count - 1 || zone[i - 1] == "gap"))
+                {
+                    zone.RemoveAt(i);
+                }
+            }
+        }
+    }
 }
 
 public sealed class MetricsSettings

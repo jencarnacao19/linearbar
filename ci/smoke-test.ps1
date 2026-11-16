@@ -17,7 +17,8 @@
 #>
 param(
     [Parameter(Mandatory)][string]$Exe,
-    [string]$Output = 'smoke'
+    [string]$Output = 'smoke',
+    [string]$Settings = (Join-Path $PSScriptRoot 'smoke-settings.json')
 )
 
 $ErrorActionPreference = 'Stop'
@@ -29,7 +30,7 @@ $Output = (Resolve-Path $Output).Path
 $log = Join-Path $Output 'smoke.log'
 $settings = Join-Path $Output 'settings.json'
 Remove-Item $log -ErrorAction SilentlyContinue
-Copy-Item (Join-Path $PSScriptRoot 'smoke-settings.json') $settings -Force
+Copy-Item $Settings $settings -Force
 
 $started = Get-Date
 

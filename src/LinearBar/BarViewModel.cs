@@ -72,6 +72,9 @@ internal sealed class BarViewModel : ObservableObject
 
     public ICommand ExitCommand { get; }
 
+    /// <summary>What goes where, from the settings.</summary>
+    public LayoutSettings Layout => _store.Current.Layout;
+
     /// <summary>Sizes derived from the settings.</summary>
     public BarGeometry Geometry => _geometry;
 

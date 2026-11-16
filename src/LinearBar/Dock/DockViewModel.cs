@@ -79,7 +79,13 @@ internal sealed class DockViewModel : ObservableObject, IDisposable
 
     public double PlatterHeight => _geometry.IslandHeight;
 
-    public double PlatterBottom => BarGeometry.IslandMargin;
+    public double PlatterBottom => _geometry.IslandMargin;
+
+    /// <summary>False inside the continuous bar, which brings its own glass.</summary>
+    public bool ShowPlatter => !_store.Current.Layout.IsContinuous;
+
+    /// <summary>True when the bar is at the top and icons grow downwards.</summary>
+    public bool IsTop => _geometry.IsTop;
 
     public double PlatterRadius => _geometry.IslandRadius;
 
@@ -102,6 +108,8 @@ internal sealed class DockViewModel : ObservableObject, IDisposable
         OnPropertyChanged(nameof(PlatterHeight));
         OnPropertyChanged(nameof(PlatterBottom));
         OnPropertyChanged(nameof(PlatterRadius));
+        OnPropertyChanged(nameof(IsTop));
+        OnPropertyChanged(nameof(ShowPlatter));
 
         if (_taskWindows is not null)
         {

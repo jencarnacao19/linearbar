@@ -60,8 +60,7 @@ internal sealed class ShellHost : IDisposable
         ViewModel = new BarViewModel(Shell, store, Dock, Metrics, Clock, Plugins, exit);
 
         ApplyAppearance(settings);
-        Window = new BarWindow(Shell, AppBarScreen.FromPrimaryScreen(), ViewModel) { Backdrop = _backdrop };
-        Window.Show();
+        Window = CreateWindow();
 
         // Hide the Windows taskbar only once our own bar is up.
         if (settings.HideWindowsTaskbar && !_keepTaskbar)
@@ -90,7 +89,7 @@ internal sealed class ShellHost : IDisposable
 
     public BarViewModel ViewModel { get; }
 
-    public BarWindow Window { get; }
+    public BarWindow Window { get; private set; }
 
     /// <summary>The blur behind the glass, or null when switched off or unsupported.</summary>
     public BackdropWindow? Backdrop => _backdrop;
@@ -123,6 +122,7 @@ internal sealed class ShellHost : IDisposable
 
         // Give the Windows taskbar back first: whatever else fails, the user has a taskbar.
         Step("restore the Windows taskbar", Taskbar.Restore);
+        Step("close the customiser", () => _customizer?.Close());
         Step("close the bar", () =>
         {
             Shell.AppBarManager.SignalGracefulShutdown();
@@ -177,7 +177,7 @@ internal sealed class ShellHost : IDisposable
             _backdrop = null;
         }
 
-        Glass.Configure(_backdrop is not null, settings.BarOpacity, settings.Appearance.CornerSmoothing);
+        ThemeManager.Apply(settings, _backdrop is not null);
     }
 
     private void ImportTaskbarPinsOnFirstRun()
@@ -196,6 +196,91 @@ internal sealed class ShellHost : IDisposable
         });
     }
 
+    /// <summary>Raised after the bar window was replaced (e.g. moved between top and bottom).</summary>
+    public event Action<BarWindow>? WindowRecreated;
+
+    /// <summary>
+    /// Applies the current settings to everything that is running: theme, layout, sizes,
+    /// plugins. Moving the bar between the top and bottom edge recreates its window.
+    /// </summary>
+    public void ApplySettings()
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        try
+        {
+            BarSettings settings = _store.Current;
+            ApplyAppearance(settings);
+            ViewModel.ApplySettings();
+
+            if (settings.Layout.IsTop != Window.IsTop)
+            {
+                RecreateWindow();
+            }
+            else
+            {
+                Window.Backdrop = _backdrop;
+                Window.ApplyGeometry();
+                Window.BuildLayout();
+            }
+
+            if (settings.HideWindowsTaskbar && !_keepTaskbar)
+            {
+                Taskbar.Hide();
+            }
+            else
+            {
+                Taskbar.Restore();
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Error("Could not apply the changed settings", ex);
+        }
+    }
+
+    private BarWindow CreateWindow()
+    {
+        var window = new BarWindow(Shell, AppBarScreen.FromPrimaryScreen(), ViewModel) { Backdrop = _backdrop };
+        window.CustomizeRequested += OpenCustomizer;
+        LinearBar.Visuals.PopupPlacement.BarAtTop = window.IsTop;
+        window.Show();
+        return window;
+    }
+
+    private void RecreateWindow()
+    {
+        BarWindow old = Window;
+        old.CustomizeRequested -= OpenCustomizer;
+        old.Backdrop = null;
+        old.AllowClose = true;
+        old.Close();
+
+        Window = CreateWindow();
+        WindowRecreated?.Invoke(Window);
+        Log.Info($"Bar moved to the {(Window.IsTop ? "top" : "bottom")} edge.");
+    }
+
+    private Settings.SettingsWindow? _customizer;
+
+    /// <summary>Opens the customisation window (or brings it to the front).</summary>
+    public void OpenCustomizer()
+    {
+        if (_customizer is { IsLoaded: true })
+        {
+            _customizer.Activate();
+            return;
+        }
+
+        _customizer = new Settings.SettingsWindow(_store, ApplySettings, Plugins);
+        _customizer.Closed += (_, _) => _customizer = null;
+        _customizer.Show();
+        _customizer.Activate();
+    }
+
     private void OnSettingsFileChanged(object? sender, EventArgs e)
     {
         // Raised on a thread-pool thread by the file watcher.
@@ -207,26 +292,8 @@ internal sealed class ShellHost : IDisposable
             }
 
             Log.Info("Settings file changed; applying.");
-            try
-            {
-                ApplyAppearance(_store.Current);
-                Window.Backdrop = _backdrop;
-                ViewModel.ApplySettings();
-                Window.ApplyGeometry();
-
-                if (_store.Current.HideWindowsTaskbar && !_keepTaskbar)
-                {
-                    Taskbar.Hide();
-                }
-                else
-                {
-                    Taskbar.Restore();
-                }
-            }
-            catch (Exception ex)
-            {
-                Log.Error("Could not apply the changed settings", ex);
-            }
+            ApplySettings();
+            _customizer?.Reload();
         });
     }
 }

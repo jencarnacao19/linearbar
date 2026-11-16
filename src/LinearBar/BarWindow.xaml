@@ -12,7 +12,7 @@
                      Background="Transparent"
                      ShowActivated="False"
                      SnapsToDevicePixels="True"
-                     FontFamily="{StaticResource UiFont}">
+                     FontFamily="{DynamicResource UiFont}">
 
     <!--
         The window is taller than the bar: only the strip at the bottom is reserved screen
@@ -43,7 +43,7 @@
                         <Setter Property="Background" Value="Transparent" />
                         <Style.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter Property="Background" Value="{StaticResource HoverBrush}" />
+                                <Setter Property="Background" Value="{DynamicResource HoverBrush}" />
                             </Trigger>
                         </Style.Triggers>
                     </Style>
@@ -75,7 +75,7 @@
                                                 Margin="0,-2,-3,0"
                                                 HorizontalAlignment="Right"
                                                 VerticalAlignment="Top"
-                                                Background="{StaticResource AttentionBrush}"
+                                                Background="{DynamicResource AttentionBrush}"
                                                 Radius="3.5"
                                                 Visibility="{Binding HasError, Converter={StaticResource BoolToVisibility}}" />
                     </Grid>
@@ -125,12 +125,12 @@
                                VerticalAlignment="Bottom"
                                FontSize="9.5"
                                FontWeight="SemiBold"
-                               Foreground="{StaticResource SubtleTextBrush}"
+                               Foreground="{DynamicResource SubtleTextBrush}"
                                Text="{Binding Label}" />
                     <TextBlock HorizontalAlignment="Right"
                                VerticalAlignment="Bottom"
                                FontSize="10.5"
-                               Foreground="{StaticResource TextBrush}"
+                               Foreground="{DynamicResource TextBrush}"
                                Text="{Binding ValueText}" />
                     <widgets:SparklineControl Grid.Row="1"
                                               Margin="0,2,0,0"
@@ -144,13 +144,86 @@
                 </Grid>
             </Button>
         </DataTemplate>
+        <!-- Built-in widgets. Their data context is the BarViewModel. -->
+        <DataTemplate x:Key="StartTemplate">
+            <Button Style="{StaticResource BarButton}"
+                    Width="{Binding StartButtonSize}"
+                    Margin="0"
+                    Padding="0"
+                    Command="{Binding StartCommand}"
+                    MouseRightButtonUp="OnStartRightClick"
+                    ToolTip="{x:Static local:Strings.Start}">
+                <visuals:StartGlyph Width="18" Height="18" Fill="{DynamicResource AccentBrush}" />
+            </Button>
+        </DataTemplate>
+
+        <DataTemplate x:Key="BatteryTemplate">
+            <Button Style="{StaticResource BarButton}"
+                    Command="{Binding TaskManagerCommand}"
+                    ToolTip="{Binding Metrics.BatteryDetail}"
+                    Visibility="{Binding Metrics.ShowBattery, Converter={StaticResource BoolToVisibility}}">
+                <StackPanel Orientation="Horizontal">
+                    <Grid Width="21" Height="11" Margin="0,1,6,0" VerticalAlignment="Center">
+                        <visuals:SquircleBorder Margin="0,0,2,0" BorderBrush="{DynamicResource TextBrush}" Radius="3.5" />
+                        <visuals:SquircleBorder Width="2" Height="4" HorizontalAlignment="Right" Background="{DynamicResource TextBrush}" Radius="1" />
+                    </Grid>
+                    <TextBlock VerticalAlignment="Center" FontSize="12" Text="{Binding Metrics.BatteryText}" />
+                </StackPanel>
+            </Button>
+        </DataTemplate>
+
+        <DataTemplate x:Key="TrayTemplate">
+            <StackPanel Orientation="Horizontal" Visibility="{Binding ShowTray, Converter={StaticResource BoolToVisibility}}">
+                <ToggleButton Style="{StaticResource BarToggleButton}"
+                              Width="22"
+                              IsChecked="{Binding IsTrayExpanded}"
+                              ToolTip="{x:Static local:Strings.ShowHiddenIcons}">
+                    <Path Width="9"
+                          Height="5"
+                          Data="M0,5 L4.5,0.5 L9,5"
+                          Stretch="Fill"
+                          Stroke="{DynamicResource SubtleTextBrush}"
+                          StrokeEndLineCap="Round"
+                          StrokeStartLineCap="Round"
+                          StrokeThickness="1.4" />
+                </ToggleButton>
+                <ItemsControl VerticalAlignment="Center"
+                              Focusable="False"
+                              ItemTemplate="{StaticResource TrayIconTemplate}"
+                              ItemsPanel="{StaticResource HorizontalPanel}"
+                              ItemsSource="{Binding UnpinnedTrayIcons}"
+                              Visibility="{Binding IsTrayExpanded, Converter={StaticResource BoolToVisibility}}" />
+                <ItemsControl VerticalAlignment="Center"
+                              Focusable="False"
+                              ItemTemplate="{StaticResource TrayIconTemplate}"
+                              ItemsPanel="{StaticResource HorizontalPanel}"
+                              ItemsSource="{Binding PinnedTrayIcons}" />
+            </StackPanel>
+        </DataTemplate>
+
+        <DataTemplate x:Key="ClockTemplate">
+            <Button Style="{StaticResource BarButton}"
+                    Command="{Binding NotificationCenterCommand}"
+                    ToolTip="{Binding Clock.FullDate}"
+                    Visibility="{Binding Clock.IsVisible, Converter={StaticResource BoolToVisibility}}">
+                <StackPanel VerticalAlignment="Center">
+                    <TextBlock HorizontalAlignment="Right" FontSize="12.5" Text="{Binding Clock.TimeText}" />
+                    <TextBlock HorizontalAlignment="Right"
+                               FontSize="10.5"
+                               Foreground="{DynamicResource SubtleTextBrush}"
+                               Text="{Binding Clock.DateText}"
+                               Visibility="{Binding Clock.ShowDate, Converter={StaticResource BoolToVisibility}}" />
+                </StackPanel>
+            </Button>
+        </DataTemplate>
     </appbar:AppBarWindow.Resources>
 
     <Grid>
         <!--
-            The reserved strip. It is transparent apart from the floating glass islands, but
-            keeps an invisible (alpha 1) background so clicks between the islands still reach
-            the bar (for its context menu) instead of falling through to the desktop.
+            The reserved strip. Its zones (left, centre, right) are filled from the layout
+            settings by BarWindow.BuildLayout: runs of widgets become glass islands, "dock"
+            becomes a placeholder the dock aligns to. The strip keeps an invisible (alpha 1)
+            background so clicks between the islands reach the bar, not the desktop.
         -->
         <Border x:Name="Strip"
                 Height="{Binding BarHeight}"
@@ -158,6 +231,7 @@
                 Background="#01000000">
             <Border.ContextMenu>
                 <ContextMenu>
+                    <MenuItem Header="{x:Static local:Strings.Customize}" Click="OnCustomizeClick" />
                     <MenuItem Header="{x:Static local:Strings.TaskManager}" Command="{Binding TaskManagerCommand}" />
                     <Separator />
                     <MenuItem Header="{x:Static local:Strings.OpenSettings}" Command="{Binding OpenSettingsCommand}" />
@@ -168,125 +242,16 @@
             </Border.ContextMenu>
 
             <Grid>
-                <!-- Left: Start. -->
-                <visuals:GlassPanel x:Name="LeftGroup"
-                                    Margin="5,0,0,0"
-                                    Height="{Binding IslandHeight}"
-                                    Radius="{Binding IslandRadius}"
-                                    Padding="3"
-                                    HorizontalAlignment="Left"
-                                    VerticalAlignment="Center"
-                                    SizeChanged="OnSideGroupSizeChanged">
-                    <StackPanel Orientation="Horizontal">
-                    <Button Style="{StaticResource BarButton}"
-                            Width="{Binding StartButtonSize}"
-                            Margin="0"
-                            Padding="0"
-                            Command="{Binding StartCommand}"
-                            MouseRightButtonUp="OnStartRightClick"
-                            ToolTip="{x:Static local:Strings.Start}">
-                        <visuals:StartGlyph Width="18" Height="18" Fill="{StaticResource AccentBrush}" />
-                    </Button>
-                    <ItemsControl Focusable="False"
-                                  ItemTemplate="{StaticResource PluginTemplate}"
-                                  ItemsPanel="{StaticResource HorizontalPanel}"
-                                  ItemsSource="{Binding Plugins.Left}" />
-                    </StackPanel>
-                </visuals:GlassPanel>
+                <!-- One continuous glass bar, for the "bar" style. -->
+                <visuals:GlassPanel x:Name="ContinuousGlass" Radius="0" Shadow="False" Visibility="Collapsed" />
 
-                <!-- Right: graphs, battery, tray, clock. -->
-                <visuals:GlassPanel x:Name="RightGroup"
-                                    Margin="0,0,5,0"
-                                    Height="{Binding IslandHeight}"
-                                    Radius="{Binding IslandRadius}"
-                                    Padding="6,3,6,3"
-                                    HorizontalAlignment="Right"
-                                    VerticalAlignment="Center"
-                                    SizeChanged="OnSideGroupSizeChanged">
-                <StackPanel Orientation="Horizontal">
-
-                    <ItemsControl Focusable="False"
-                                  ItemTemplate="{StaticResource PluginTemplate}"
-                                  ItemsPanel="{StaticResource HorizontalPanel}"
-                                  ItemsSource="{Binding Plugins.Right}" />
-
-                    <ItemsControl Focusable="False"
-                                  ItemTemplate="{StaticResource MetricTemplate}"
-                                  ItemsPanel="{StaticResource HorizontalPanel}"
-                                  ItemsSource="{Binding Metrics.Items}" />
-
-                    <Button Style="{StaticResource BarButton}"
-                            Command="{Binding TaskManagerCommand}"
-                            ToolTip="{Binding Metrics.BatteryDetail}"
-                            Visibility="{Binding Metrics.ShowBattery, Converter={StaticResource BoolToVisibility}}">
-                        <StackPanel Orientation="Horizontal">
-                            <Grid Width="20" Height="10" Margin="0,1,6,0" VerticalAlignment="Center">
-                                <Border Margin="0,0,2,0"
-                                        BorderBrush="{StaticResource TextBrush}"
-                                        BorderThickness="1"
-                                        CornerRadius="2" />
-                                <Border Width="2"
-                                        Height="4"
-                                        HorizontalAlignment="Right"
-                                        Background="{StaticResource TextBrush}" />
-                            </Grid>
-                            <TextBlock VerticalAlignment="Center"
-                                       FontSize="12"
-                                       Text="{Binding Metrics.BatteryText}" />
-                        </StackPanel>
-                    </Button>
-
-                    <StackPanel Margin="4,0,0,0"
-                                Orientation="Horizontal"
-                                Visibility="{Binding ShowTray, Converter={StaticResource BoolToVisibility}}">
-                        <ToggleButton Style="{StaticResource BarToggleButton}"
-                                      Width="22"
-                                      IsChecked="{Binding IsTrayExpanded}"
-                                      ToolTip="{x:Static local:Strings.ShowHiddenIcons}">
-                            <Path Width="9"
-                                  Height="5"
-                                  Data="M0,5 L4.5,0.5 L9,5"
-                                  Stretch="Fill"
-                                  Stroke="{StaticResource SubtleTextBrush}"
-                                  StrokeEndLineCap="Round"
-                                  StrokeStartLineCap="Round"
-                                  StrokeThickness="1.4" />
-                        </ToggleButton>
-                        <ItemsControl VerticalAlignment="Center"
-                                      Focusable="False"
-                                      ItemTemplate="{StaticResource TrayIconTemplate}"
-                                      ItemsPanel="{StaticResource HorizontalPanel}"
-                                      ItemsSource="{Binding UnpinnedTrayIcons}"
-                                      Visibility="{Binding IsTrayExpanded, Converter={StaticResource BoolToVisibility}}" />
-                        <ItemsControl VerticalAlignment="Center"
-                                      Focusable="False"
-                                      ItemTemplate="{StaticResource TrayIconTemplate}"
-                                      ItemsPanel="{StaticResource HorizontalPanel}"
-                                      ItemsSource="{Binding PinnedTrayIcons}" />
-                    </StackPanel>
-
-                    <Button Style="{StaticResource BarButton}"
-                            Margin="4,4,1,4"
-                            Command="{Binding NotificationCenterCommand}"
-                            ToolTip="{Binding Clock.FullDate}"
-                            Visibility="{Binding Clock.IsVisible, Converter={StaticResource BoolToVisibility}}">
-                        <StackPanel VerticalAlignment="Center">
-                            <TextBlock HorizontalAlignment="Right"
-                                       FontSize="12.5"
-                                       Text="{Binding Clock.TimeText}" />
-                            <TextBlock HorizontalAlignment="Right"
-                                       FontSize="10.5"
-                                       Foreground="{StaticResource SubtleTextBrush}"
-                                       Text="{Binding Clock.DateText}"
-                                       Visibility="{Binding Clock.ShowDate, Converter={StaticResource BoolToVisibility}}" />
-                        </StackPanel>
-                    </Button>
-                </StackPanel>
-                </visuals:GlassPanel>
+                <StackPanel x:Name="LeftZone" HorizontalAlignment="Left" Orientation="Horizontal" VerticalAlignment="Center" />
+                <StackPanel x:Name="CenterZone" HorizontalAlignment="Center" Orientation="Horizontal" VerticalAlignment="Center" />
+                <StackPanel x:Name="RightZone" HorizontalAlignment="Right" Orientation="Horizontal" VerticalAlignment="Center" />
             </Grid>
         </Border>
 
-        <!-- The dock spans the whole window so its icons can grow above the strip. -->
+        <!-- The dock spans the whole window so its icons can grow beyond the strip. -->
         <dock:DockView x:Name="DockHost" DataContext="{Binding Dock}" />
     </Grid>
 </appbar:AppBarWindow>

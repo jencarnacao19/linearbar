@@ -28,7 +28,9 @@
                                         LensRadius="{Binding LensRadius}"
                                         PlatterHeight="{Binding PlatterHeight}"
                                         PlatterBottom="{Binding PlatterBottom}"
-                                        PlatterRadius="{Binding PlatterRadius}" />
+                                        PlatterRadius="{Binding PlatterRadius}"
+                                        Downward="{Binding IsTop}"
+                                        ShowPlatter="{Binding ShowPlatter}" />
                 </ItemsPanelTemplate>
             </ItemsControl.ItemsPanel>
 
@@ -88,20 +90,20 @@
                         <!-- The app in front gets a wider, accent-coloured indicator. -->
                         <DataTrigger Binding="{Binding IsActive}" Value="True">
                             <Setter TargetName="Dot1" Property="Width" Value="12" />
-                            <Setter TargetName="Dot1" Property="Background" Value="{StaticResource AccentBrush}" />
-                            <Setter TargetName="Dot2" Property="Background" Value="{StaticResource AccentBrush}" />
-                            <Setter TargetName="Dot3" Property="Background" Value="{StaticResource AccentBrush}" />
+                            <Setter TargetName="Dot1" Property="Background" Value="{DynamicResource AccentBrush}" />
+                            <Setter TargetName="Dot2" Property="Background" Value="{DynamicResource AccentBrush}" />
+                            <Setter TargetName="Dot3" Property="Background" Value="{DynamicResource AccentBrush}" />
                         </DataTrigger>
 
                         <DataTrigger Binding="{Binding IsProgressError}" Value="True">
-                            <Setter TargetName="ProgressIndicator" Property="Foreground" Value="{StaticResource AttentionBrush}" />
+                            <Setter TargetName="ProgressIndicator" Property="Foreground" Value="{DynamicResource AttentionBrush}" />
                         </DataTrigger>
 
                         <!-- A window asking for attention pulses its icon. -->
                         <DataTrigger Binding="{Binding NeedsAttention}" Value="True">
-                            <Setter TargetName="Dot1" Property="Background" Value="{StaticResource AttentionBrush}" />
-                            <Setter TargetName="Dot2" Property="Background" Value="{StaticResource AttentionBrush}" />
-                            <Setter TargetName="Dot3" Property="Background" Value="{StaticResource AttentionBrush}" />
+                            <Setter TargetName="Dot1" Property="Background" Value="{DynamicResource AttentionBrush}" />
+                            <Setter TargetName="Dot2" Property="Background" Value="{DynamicResource AttentionBrush}" />
+                            <Setter TargetName="Dot3" Property="Background" Value="{DynamicResource AttentionBrush}" />
                             <DataTrigger.EnterActions>
                                 <BeginStoryboard x:Name="AttentionPulse">
                                     <Storyboard>
@@ -131,9 +133,9 @@
                     <TranslateTransform x:Name="LabelOffset" />
                 </visuals:GlassPanel.RenderTransform>
                 <TextBlock x:Name="LabelText"
-                           FontFamily="{StaticResource UiFont}"
+                           FontFamily="{DynamicResource UiFont}"
                            FontSize="12.5"
-                           Foreground="{StaticResource TextBrush}" />
+                           Foreground="{DynamicResource TextBrush}" />
             </visuals:GlassPanel>
         </Canvas>
     </Grid>

@@ -239,3 +239,67 @@ public class PluginConfigTests
         Assert.Equal("Porto", again.Plugins["weather"].GetString("city"));
     }
 }
+
+public class LayoutSettingsTests
+{
+    [Fact]
+    public void Defaults_put_the_dock_in_the_centre_and_start_on_the_left()
+    {
+        var settings = new BarSettings();
+        settings.Normalize();
+
+        Assert.Equal("bottom", settings.Layout.Position);
+        Assert.Equal("islands", settings.Layout.Style);
+        Assert.Equal("start", settings.Layout.Left[0]);
+        Assert.Equal(["dock"], settings.Layout.Center);
+        Assert.Equal("clock", settings.Layout.Right[^1]);
+    }
+
+    [Fact]
+    public void Normalize_removes_duplicates_bad_gaps_and_unknown_positions()
+    {
+        BarSettings settings = SettingsStore.Deserialize("""
+            { "layout": { "position": "TOP", "style": "weird",
+                          "left": ["gap", "Start", "clock", "gap", "gap", "dock", "gap"],
+                          "center": ["clock", "weather"],
+                          "right": [null, "", "start", "tray"] } }
+            """);
+
+        Assert.True(settings.Layout.IsTop);
+        Assert.Equal("islands", settings.Layout.Style);
+        Assert.Equal(["start", "clock", "gap", "dock"], settings.Layout.Left);
+        Assert.Equal(["weather"], settings.Layout.Center);
+        Assert.Equal(["tray"], settings.Layout.Right);
+    }
+
+    [Fact]
+    public void Theme_colours_are_validated()
+    {
+        BarSettings settings = SettingsStore.Deserialize("""
+            { "appearance": { "accent": "system", "glassColor": "blue", "textColor": "#fff", "cornerRoundness": 3, "islandMargin": -1 } }
+            """);
+
+        Assert.Equal("system", settings.Appearance.Accent);
+        Assert.Equal("#101016", settings.Appearance.GlassColor);
+        Assert.Equal("#FFF", settings.Appearance.TextColor);
+        Assert.Equal(0.5, settings.Appearance.CornerRoundness);
+        Assert.Equal(0, settings.Appearance.IslandMargin);
+    }
+
+    [Fact]
+    public void Island_margin_and_roundness_shape_the_geometry()
+    {
+        var settings = new BarSettings();
+        settings.Appearance.IslandMargin = 0;
+        settings.Appearance.CornerRoundness = 0.5;
+        settings.Layout.Position = "top";
+        settings.Normalize();
+
+        var geometry = LinearBar.Core.Dock.BarGeometry.From(settings);
+
+        Assert.Equal(64, geometry.IslandHeight);
+        Assert.Equal(32, geometry.IslandRadius);
+        Assert.Equal(2, geometry.CellBottomMargin);
+        Assert.True(geometry.IsTop);
+    }
+}

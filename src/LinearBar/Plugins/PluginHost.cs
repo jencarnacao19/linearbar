@@ -21,6 +21,7 @@ internal sealed class PluginHost : IDisposable
     private static readonly string[] PreferredOrder = ["spotify", "nowplaying", "calendar", "weather", "github", "claude", "codex", "agy"];
 
     private readonly List<PluginWidgetViewModel> _widgets = [];
+    private string? _appliedConfig;
 
     public static string UserPluginsFolder => Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "LinearBar", "plugins");
@@ -39,6 +40,14 @@ internal sealed class PluginHost : IDisposable
     /// <summary>(Re)creates every plugin from the settings.</summary>
     public void Apply(BarSettings settings)
     {
+        // Restarting plugins is not free (scripts, network); only do it when theirs changed.
+        string pluginSettings = System.Text.Json.JsonSerializer.Serialize(settings.Plugins);
+        if (pluginSettings == _appliedConfig)
+        {
+            return;
+        }
+
+        _appliedConfig = pluginSettings;
         StopAll();
         LoadErrors.Clear();
 

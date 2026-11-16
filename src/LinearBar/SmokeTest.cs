@@ -42,6 +42,7 @@ internal sealed class SmokeTest(ShellHost host, StartupOptions options, Action<i
             await CheckPluginsAsync();
             await CheckMagnificationAsync();
             CheckPopups();
+            await CheckCustomizerAsync();
             SaveScreenshots();
 
             Check("no errors logged", Log.ErrorCount == 0, $"{Log.ErrorCount} error(s), {Log.ShellErrorCount} from ManagedShell");
@@ -97,14 +98,33 @@ internal sealed class SmokeTest(ShellHost host, StartupOptions options, Action<i
 
         Check("window is visible", window.IsVisible && window.Handle != IntPtr.Zero, $"visible {window.IsVisible}");
         Check("window spans the screen width", rect.Left == screen.Left && rect.Width == screen.Width, $"{rect.Left}+{rect.Width} vs {screen.Left}+{screen.Width}");
-        Check("window sits on the bottom edge", rect.Bottom == screen.Bottom, $"bottom {rect.Bottom} vs {screen.Bottom}");
+        if (window.IsTop)
+        {
+            Check("window sits on the top edge", rect.Top == screen.Top, $"top {rect.Top} vs {screen.Top}");
+        }
+        else
+        {
+            Check("window sits on the bottom edge", rect.Bottom == screen.Bottom, $"bottom {rect.Bottom} vs {screen.Bottom}");
+        }
         Check("window includes the overflow band", Math.Abs(rect.Height - (reserved + overflow)) <= 1, $"height {rect.Height}, expected {reserved} + {overflow}");
 
         // The AppBar registration must shrink the work area by the bar height, and only by that.
         Rect workArea = SystemParameters.WorkArea;
-        double expectedBottom = SystemParameters.PrimaryScreenHeight - geometry.BarHeight;
-        Check("screen space is reserved for the bar only", Math.Abs(workArea.Bottom - expectedBottom) <= 2,
-            $"work area bottom {workArea.Bottom:0.#}, expected {expectedBottom:0.#} (screen {SystemParameters.PrimaryScreenHeight:0.#})");
+        if (window.IsTop)
+        {
+            Check("screen space is reserved for the bar only", Math.Abs(workArea.Top - geometry.BarHeight) <= 2,
+                $"work area top {workArea.Top:0.#}, expected {geometry.BarHeight:0.#}");
+        }
+        else
+        {
+            double expectedBottom = SystemParameters.PrimaryScreenHeight - geometry.BarHeight;
+            Check("screen space is reserved for the bar only", Math.Abs(workArea.Bottom - expectedBottom) <= 2,
+                $"work area bottom {workArea.Bottom:0.#}, expected {expectedBottom:0.#} (screen {SystemParameters.PrimaryScreenHeight:0.#})");
+        }
+
+        Log.Info($"SMOKE: layout {host.ViewModel.Layout.Position}/{host.ViewModel.Layout.Style}: left [{string.Join(", ", host.ViewModel.Layout.Left)}], "
+            + $"center [{string.Join(", ", host.ViewModel.Layout.Center)}], right [{string.Join(", ", host.ViewModel.Layout.Right)}]; {window.Islands.Count} island(s)");
+        Check("layout produced islands", window.Islands.Count > 0, $"{window.Islands.Count} island(s)");
     }
 
     private void CheckMetrics()
@@ -269,7 +289,8 @@ internal sealed class SmokeTest(ShellHost host, StartupOptions options, Action<i
 
         double x = resting[target].Center;
         double cell = panel.CellHeight * panel.Fit;
-        double y = panel.ActualHeight - panel.BottomMargin - cell / 2;
+        bool top = host.Window.IsTop;
+        double y = top ? panel.BottomMargin + cell / 2 : panel.ActualHeight - panel.BottomMargin - cell / 2;
         Log.Info($"SMOKE: dock fit {panel.Fit:0.##} (icons at {panel.Fit * 100:0} % so the dock fits between the islands)");
         Point screen = panel.PointToScreen(new Point(x, y));
 
@@ -285,7 +306,8 @@ internal sealed class SmokeTest(ShellHost host, StartupOptions options, Action<i
             // Climb into the transparent band, onto the magnified part of the icon: the dock
             // must keep tracking the pointer there.
             double lift = cell * (maxScale - 1) * 0.6;
-            Native.SetCursorPos((int)screen.X, (int)(screen.Y - (cell / 2 + lift) * host.Window.DpiScale));
+            double climb = (cell / 2 + lift) * host.Window.DpiScale;
+            Native.SetCursorPos((int)screen.X, (int)(top ? screen.Y + climb : screen.Y - climb));
             await Task.Delay(500);
             Check("dock keeps the pointer above the bar strip", panel.IsMouseOver && panel.Amount > 0.9,
                 $"amount {panel.Amount:0.##}, mouse over {panel.IsMouseOver}");
@@ -352,6 +374,58 @@ internal sealed class SmokeTest(ShellHost host, StartupOptions options, Action<i
         }
     }
 
+    /// <summary>Opens the customisation window, captures it and closes it again.</summary>
+    private async Task CheckCustomizerAsync()
+    {
+        try
+        {
+            host.OpenCustomizer();
+            await Task.Delay(800);
+            var window = Application.Current.Windows.OfType<LinearBar.Settings.SettingsWindow>().FirstOrDefault();
+            Check("customisation window opens", window is { IsVisible: true }, window is null ? "not found" : $"{window.ActualWidth:0}x{window.ActualHeight:0}");
+
+            if (window is not null && !string.IsNullOrWhiteSpace(options.ScreenshotDirectory) && window.Content is FrameworkElement content)
+            {
+                // Render each page so a broken page shows up in the log and the screenshots.
+                foreach (var nav in FindAll<System.Windows.Controls.RadioButton>(window).Where(r => r.GroupName == "nav").ToList())
+                {
+                    nav.IsChecked = true;
+                    await Task.Delay(250);
+                    content.UpdateLayout();
+                    var bitmap = new RenderTargetBitmap((int)content.ActualWidth, (int)content.ActualHeight, 96, 96, PixelFormats.Pbgra32);
+                    bitmap.Render(content);
+                    SavePng(bitmap, Path.Combine(options.ScreenshotDirectory, $"settings-{nav.Tag}.png"));
+                }
+            }
+
+            window?.Close();
+            await Task.Delay(200);
+        }
+        catch (Exception ex)
+        {
+            Check("customisation window works", false, ex.GetType().Name + ": " + ex.Message);
+            Log.Error("SMOKE: customisation window failed", ex);
+        }
+    }
+
+    private static IEnumerable<T> FindAll<T>(DependencyObject root)
+        where T : DependencyObject
+    {
+        for (int i = 0; i < VisualTreeHelper.GetChildrenCount(root); i++)
+        {
+            DependencyObject child = VisualTreeHelper.GetChild(root, i);
+            if (child is T match)
+            {
+                yield return match;
+            }
+
+            foreach (T nested in FindAll<T>(child))
+            {
+                yield return nested;
+            }
+        }
+    }
+
     private void SaveScreenshots(string suffix = "resting", int extraHeight = 60)
     {
         if (string.IsNullOrWhiteSpace(options.ScreenshotDirectory))
@@ -381,7 +455,8 @@ internal sealed class SmokeTest(ShellHost host, StartupOptions options, Action<i
             // 2. What is actually on screen around the bar.
             var rect = window.WindowRect;
             int margin = (int)(extraHeight * window.DpiScale);
-            if (CaptureScreen(rect.Left, rect.Top - margin, rect.Width, rect.Height + margin) is { } screen)
+            int captureTop = window.IsTop ? rect.Top : rect.Top - margin;
+            if (CaptureScreen(rect.Left, captureTop, rect.Width, rect.Height + margin) is { } screen)
             {
                 SavePng(screen, Path.Combine(options.ScreenshotDirectory, $"screen-{suffix}.png"));
             }

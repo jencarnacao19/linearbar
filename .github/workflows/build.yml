@@ -51,6 +51,10 @@ jobs:
       - name: Smoke test
         shell: pwsh
         run: ./ci/smoke-test.ps1 -Exe publish/LinearBar.exe -Output smoke
+      - name: Smoke test (customised bar)
+        if: always()
+        shell: pwsh
+        run: ./ci/smoke-test.ps1 -Exe publish/LinearBar.exe -Output smoke/custom -Settings ci/smoke-settings-custom.json
       - name: Upload smoke test output
         if: always()
         uses: actions/upload-artifact@v5

@@ -39,8 +39,9 @@ internal sealed class MetricItem : ObservableObject
     private double _maximum;
     private int _version;
 
-    public MetricItem(string label, double width, double maximum, int historyLength, Color color, Color? secondaryColor = null)
+    public MetricItem(string key, string label, double width, double maximum, int historyLength, Color color, Color? secondaryColor = null)
     {
+        Key = key;
         Label = label;
         Width = width;
         _maximum = maximum;
@@ -54,6 +55,9 @@ internal sealed class MetricItem : ObservableObject
             SecondaryStroke = Palette.Solid(secondary);
         }
     }
+
+    /// <summary>Layout id: "cpu", "memory" or "network".</summary>
+    public string Key { get; }
 
     /// <summary>Short caption, e.g. "CPU".</summary>
     public string Label { get; }
