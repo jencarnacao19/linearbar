@@ -13,12 +13,13 @@
     "center": ["clock"],
     "right": ["weather", "gap", "cpu", "memory", "tray"]
   },
+  // Every plugin stays enabled (the smoke checks expect the full set); the layout above
+  // decides which ones are actually shown.
   "plugins": {
     "weather": { "city": "Porto" },
-    "claude": { "enabled": false },
-    "codex": { "enabled": false },
-    "github": { "enabled": false },
-    "calendar": { "enabled": false }
+    "ping": { "enabled": true },
+    "claude": { "alwaysShow": "true" },
+    "codex": { "alwaysShow": "true" }
   },
   "pinned": [
     { "path": "C:\\Windows\\explorer.exe" },
